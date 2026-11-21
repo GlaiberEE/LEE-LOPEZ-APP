@@ -1,0 +1,4 @@
+datos/
+datos-demo/
+node_modules/
+*.db

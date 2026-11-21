@@ -1,0 +1,19 @@
+# Configuración para Render (render.com). Crea la app con un disco que no se borra en /data.
+services:
+  - type: web
+    name: lee-lopez-app
+    runtime: docker
+    plan: starter
+    region: ohio
+    healthCheckPath: /api/status
+    disk:
+      name: datos
+      mountPath: /data
+      sizeGB: 5
+    envVars:
+      - key: APP_TZ
+        value: America/Chicago
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SETUP_CODE
+        generateValue: true
