@@ -128,13 +128,14 @@ function formDialog({ title, fields, submit = t('Guardar'), onSubmit, danger, in
       if (f.type === 'textarea') return `<textarea id="${id}" name="${f.name}" ${req}>${esc(f.value)}</textarea>`;
       if (f.type === 'select') return `<select id="${id}" name="${f.name}" ${req}>${f.options.map(([v, l]) => `<option value="${esc(v)}" ${String(v) === String(f.value ?? '') ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
       if (f.type === 'photo') return `<input id="${id}" name="${f.name}" type="file" accept="image/*" ${f.capture ? 'capture="environment"' : ''} ${req}>`;
+      if (f.type === 'doc') return `<input id="${id}" name="${f.name}" type="file" accept="image/*,application/pdf" ${req}>`;
       if (f.type === 'check') return `<label class="check"><input id="${id}" name="${f.name}" type="checkbox" ${f.value ? 'checked' : ''}> ${esc(f.label)}</label>`;
       if (f.type === 'money') return `<input id="${id}" name="${f.name}" inputmode="decimal" placeholder="0.00" value="${esc(f.value ?? '')}" ${req} autocomplete="off">`;
       if (f.type === 'datetime') return `<input id="${id}" name="${f.name}" type="datetime-local" value="${esc(f.value ?? '')}" ${req}>`;
       return `<input id="${id}" name="${f.name}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" ${req} ${f.type === 'password' ? 'autocomplete="new-password"' : ''}>`;
     };
     d.innerHTML = `<form method="dialog" novalidate><h2>${esc(title)}</h2>${intro ? `<div class="intro">${intro}</div>` : ''}<div class="error"></div>
-      <div class="fields">${fields.map(f => `<div class="field ${f.full || ['textarea', 'photo', 'check'].includes(f.type) ? 'full' : ''}" ${f.hidden ? 'hidden' : ''}>
+      <div class="fields">${fields.map(f => ` <div class="field ${f.full || ['textarea', 'photo', 'doc', 'check'].includes(f.type) ? 'full' : ''}" ${f.hidden ? 'hidden' : ''}>
         ${f.type === 'check' ? '' : `<label for="f_${f.name}">${esc(f.label)}${f.required ? ' *' : ''}</label>`}${input(f)}${f.hint ? `<div class="hint">${esc(f.hint)}</div>` : ''}</div>`).join('')}</div>
       <div class="foot">${extraButton ? `<button type="button" data-extra class="${extraButton.danger ? 'danger' : ''}" style="margin-right:auto">${esc(extraButton.label)}</button>` : ''}<button type="button" data-x>${t('Cancelar')}</button><button class="${danger ? 'danger' : 'primary'}" type="submit">${esc(submit)}</button></div></form>`;
     document.body.appendChild(d);
@@ -154,6 +155,7 @@ function formDialog({ title, fields, submit = t('Guardar'), onSubmit, danger, in
           const el = $(`[name="${f.name}"]`, d);
           if (f.type === 'check') { v[f.name] = el.checked; continue; }
           if (f.type === 'photo') { v[f.name] = el.files[0] ? await compressImage(el.files[0]) : null; if (f.required && !v[f.name]) throw new Error(t('Falta: {x}', { x: f.label })); continue; }
+          if (f.type === 'doc') { v[f.name] = el.files[0] ? await readDocFile(el.files[0]) : null; if (f.required && !v[f.name]) throw new Error(t('Falta: {x}', { x: f.label })); continue; }
           let val = el.value.trim();
           if (f.required && !val) throw new Error(t('Falta: {x}', { x: f.label }));
           if (f.type === 'money') { val = toCents(val); if (Number.isNaN(val)) throw new Error(t('Monto inválido: {x}', { x: f.label })); }
@@ -193,22 +195,26 @@ const ICON = {
 const svg = k => `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
 
 // Menú según el papel de la persona y las herramientas que tenga prendidas.
+const MOD = k => !!(COMPANY && COMPANY.modules ? COMPANY.modules[k] : ['importar'].includes(k));
 const NAV = () => {
   const sells = (ME.tools || []).includes('ventas');
   return {
-    owner: [['#/', t('Inicio')], ['#/hoy', t('Hoy')], ...(sells ? [['#/ventas', t('Ventas')]] : []), ['#/calendario', t('Calendario')], ['#/obras', t('Obras')], ['#/materiales', t('Materiales')], ['#/casos', t('Casos')], ['#/gastos', t('Gastos')], ['#/horas', t('Horas')], ['#/cuentas', t('Cuentas')], ['#/proyecciones', t('Proyecciones')], ['#/reportes', t('Reportes')], ['#/pm', t('Project managers')], ['#/historial', t('Historial')], ['#/equipo', t('Equipo y accesos')], ['#/cuenta', t('Mi cuenta')]],
-    pm: [['#/', t('Inicio')], ['#/hoy', t('Hoy')], ...(sells ? [['#/ventas', t('Ventas')]] : []), ['#/obras', t('Mis obras')], ['#/calendario', t('Calendario')], ['#/materiales', t('Materiales')], ['#/casos', t('Casos')], ['#/gastos', t('Gastos')], ['#/cuenta', t('Mi cuenta')]],
-    sales: [['#/', t('Mi día')], ['#/ventas/clientes', t('Clientes y estimados')], ['#/ventas/agenda', t('Agenda')], ['#/materiales', t('Materiales')], ['#/cuenta', t('Mi cuenta')]],
-    worker: [['#/', t('Mis obras')], ['#/calendario', t('Calendario')], ['#/docs', t('Estimados e invoices')], ['#/mis-pagos', t('Mis pagos')], ['#/cuenta', t('Mi cuenta')]],
-    client: [['#/', t('Mi proyecto')], ['#/materiales', t('Materiales')], ['#/cuenta', t('Mi cuenta')]],
+    owner: [['#/', t('Inicio')], ['#/calendario', t('Calendario')], ['#/obras', t('Obras')], ...(sells ? [['#/ventas', t('Ventas')]] : []), ['#/gastos', t('Gastos')], ['#/dinero', t('Dinero')], ['#/textos', t('Textos')], ['#/casos', t('Casos')], ['#/materiales', t('Materiales')], ['#/equipo', t('Equipo')],
+      ...(MOD('horas') ? [['#/horas', t('Horas y nómina')]] : []), ...(MOD('pm') ? [['#/pm', t('Project managers')]] : [])],
+    pm: [['#/', t('Inicio')], ['#/obras', t('Mis obras')], ['#/calendario', t('Calendario')], ...(sells ? [['#/ventas', t('Ventas')]] : []), ['#/gastos', t('Gastos')], ['#/textos', t('Textos')], ['#/casos', t('Casos')], ['#/materiales', t('Materiales')]],
+    sales: [['#/', t('Mi día')], ['#/ventas/clientes', t('Clientes y estimados')], ['#/ventas/agenda', t('Agenda')], ['#/materiales', t('Materiales')]],
+    worker: [['#/', t('Mis obras')], ['#/calendario', t('Calendario')], ['#/docs', t('Estimados e invoices')], ['#/mis-pagos', t('Mis pagos')]],
+    client: [['#/', t('Mi proyecto')], ['#/materiales', t('Materiales')]],
   };
 };
+// Abajo del menú, más chico: lo que se usa poco.
+const NAV2 = () => ME.role === 'owner' ? [['#/historial', t('Historial')], ['#/cuenta', t('Mi cuenta')]] : [['#/cuenta', t('Mi cuenta')]];
 // Pestañas de la barra de abajo en el teléfono (como una app).
 const TABS_MOBILE = () => {
   const sells = (ME.tools || []).includes('ventas');
   return {
-    owner: [['#/', t('Inicio'), 'home'], ['#/hoy', t('Hoy'), 'cal'], ['#/obras', t('Obras'), 'jobs'], sells ? ['#/ventas', t('Ventas'), 'team'] : ['#/gastos', t('Gastos'), 'money'], ['more', t('Más'), 'more']],
-    pm: [['#/', t('Inicio'), 'home'], ['#/hoy', t('Hoy'), 'cal'], ['#/obras', t('Obras'), 'jobs'], sells ? ['#/ventas', t('Ventas'), 'team'] : ['#/casos', t('Casos'), 'more'], ['more', t('Más'), 'more']],
+    owner: [['#/', t('Inicio'), 'home'], ['#/obras', t('Obras'), 'jobs'], ['#/calendario', t('Calendario'), 'cal'], sells ? ['#/ventas', t('Ventas'), 'team'] : ['#/gastos', t('Gastos'), 'money'], ['more', t('Más'), 'more']],
+    pm: [['#/', t('Inicio'), 'home'], ['#/calendario', t('Calendario'), 'cal'], ['#/obras', t('Obras'), 'jobs'], sells ? ['#/ventas', t('Ventas'), 'team'] : ['#/casos', t('Casos'), 'more'], ['more', t('Más'), 'more']],
     sales: [['#/', t('Mi día'), 'home'], ['#/ventas/clientes', t('Clientes'), 'team'], ['#/ventas/agenda', t('Agenda'), 'cal'], ['#/materiales', t('Materiales'), 'jobs'], ['#/cuenta', t('Mi cuenta'), 'user']],
     worker: [['#/', t('Mis obras'), 'jobs'], ['#/calendario', t('Calendario'), 'cal'], ['#/docs', 'Invoices', 'money'], ['#/mis-pagos', t('Mis pagos'), 'money'], ['#/cuenta', t('Mi cuenta'), 'user']],
     client: [['#/', t('Mi proyecto'), 'home'], ['#/materiales', t('Materiales'), 'jobs'], ['#/cuenta', t('Mi cuenta'), 'user']],
@@ -222,7 +228,7 @@ function renderNav() {
   nav.hidden = false; top.hidden = false; tab.hidden = false;
   nav.innerHTML = `${brandHtml('logo')}${companySwitcher()}
     ${NAV()[ME.role].map(([h, l]) => `<a href="${h}">${esc(l)}${h === '#/' && ME.pending ? ` <span class="badge b-late">${ME.pending}</span>` : ''}</a>`).join('')}
-    <a href="#/ayuda" data-help class="helplink">❓ ${LANG === 'en' ? 'Help' : 'Ayuda'}</a>
+    <div class="nav2">${NAV2().map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join('')}<a href="#/ayuda" data-help class="helplink">❓ ${LANG === 'en' ? 'Help' : 'Ayuda'}</a></div>
     <div class="who">${langButton()}<div style="margin-top:.75rem">${esc(ME.name)}</div><button class="sm" id="logout">${t('Cerrar sesión')}</button></div>`;
   top.innerHTML = `${brandHtml('')}${companySwitcher(true)}<span style="flex:1"></span><a href="#/ayuda" data-help class="helpbtn" aria-label="${LANG === 'en' ? 'Help' : 'Ayuda'}">?</a>${langButton()}`;
   // Ayuda: abre los temas de la pantalla donde está.
@@ -240,9 +246,11 @@ function renderNav() {
 }
 function markNav() {
   const h = location.hash || '#/';
+  document.body.classList.toggle('on-texts', h.startsWith('#/textos'));
   const under = (x, base) => x === base || x.startsWith(base + '/');
   const isOn = href => href === h || (href !== '#/' && href !== 'more' && under(h, href)) || (href === '#/obras' && h.startsWith('#/obra/'))
-    || (href === 'more' && ['#/equipo', '#/cuenta', '#/casos', '#/horas', '#/cuentas', '#/proyecciones', '#/reportes', '#/historial', '#/pm', '#/materiales', '#/calendario', '#/gastos'].some(b => under(h, b)) && !$(`#tabbar [data-tab="${h}"]`))
+    || (href === '#/' && under(h, '#/hoy')) || (href === '#/dinero' && ['#/cuentas', '#/reportes', '#/proyecciones'].some(b => under(h, b)))
+    || (href === 'more' && ['#/equipo', '#/cuenta', '#/casos', '#/horas', '#/dinero', '#/cuentas', '#/proyecciones', '#/reportes', '#/historial', '#/pm', '#/materiales', '#/calendario', '#/gastos', '#/textos'].some(b => under(h, b)) && !$(`#tabbar [data-tab="${h}"]`))
     || (href === '#/ventas' && h.startsWith('#/ventas/'));
   $$('#nav a').forEach(a => a.classList.toggle('on', isOn(a.getAttribute('href'))));
   $$('#tabbar [data-tab]').forEach(a => a.classList.toggle('on', isOn(a.dataset.tab)));
@@ -253,7 +261,7 @@ function moreSheet() {
   const tabs = new Set(TABS_MOBILE()[ME.role].map(x => x[0]));
   const IC = { '#/equipo': 'team', '#/cuenta': 'user', '#/calendario': 'cal', '#/horas': 'cal', '#/hoy': 'cal', '#/pm': 'team', '#/ventas': 'team', '#/materiales': 'jobs', '#/casos': 'jobs', '#/historial': 'jobs', '#/obras': 'jobs' };
   d.innerHTML = `<div class="grab"></div><div class="sheet-list">
-    ${NAV()[ME.role].filter(([h]) => !tabs.has(h) && h !== '#/').map(([h, l]) => `<a href="${h}">${svg(IC[h] || 'money')}<span>${esc(l)}</span></a>`).join('')}
+    ${[...NAV()[ME.role], ...NAV2()].filter(([h]) => !tabs.has(h) && h !== '#/').map(([h, l]) => `<a href="${h}">${svg(IC[h] || 'money')}<span>${esc(l)}</span></a>`).join('')}
     <button data-l>${langButton().replace(/<\/?button[^>]*>/g, '')}<span>${t('Idioma')}</span></button>
     <button data-out>${svg('logout')}<span>${t('Cerrar sesión')}</span></button></div>`;
   document.body.appendChild(d);
@@ -287,8 +295,26 @@ function showInstall(force) {
   const i = $('[data-i]', box); if (i) i.onclick = async () => { installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; box.hidden = true; };
   $('[data-x]', box).onclick = () => { box.hidden = true; try { localStorage.setItem('ee_install_snooze', String(Date.now() + 7 * 86400000)); } catch { /* */ } };
 }
+// Versión nueva: el teléfono la baja solo por detrás; aquí se avisa para que la persona recargue cuando le convenga
+// (nunca se recarga sola: podría estar escribiendo algo).
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+  const hadApp = !!navigator.serviceWorker.controller;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      const check = () => reg.update().catch(() => {});
+      setInterval(check, 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    }).catch(() => {});
+  });
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadApp) showUpdateBar(); });
+}
+function showUpdateBar() {
+  if ($('#updbar')) return;
+  const bar = document.createElement('div'); bar.id = 'updbar'; bar.setAttribute('role', 'status');
+  bar.innerHTML = `<span>✨ ${t('Hay una versión nueva de la app.')}</span><button class="sm primary" data-r>${t('Actualizar')}</button><button class="sm link" data-x aria-label="${t('Ahora no')}">✕</button>`;
+  document.body.appendChild(bar);
+  $('[data-r]', bar).onclick = () => location.reload();
+  $('[data-x]', bar).onclick = () => bar.remove();
 }
 
 async function route() {
@@ -315,7 +341,8 @@ async function route() {
     }
     if (parts[0] === 'ayuda') return await viewHelp(app, decodeURIComponent(parts.slice(1).join('/')));
     if (ME.role === 'sales') return await viewSalesHome(app);
-    if (parts[0] === 'hoy' && BOSS()) return await viewBoard(app);
+    if (BOSS() && (parts[0] === 'hoy' || (!parts[0] && ME.role !== 'worker'))) return await viewHome(app, parts[0] === 'hoy' ? 'hoy' : 'resumen');
+    if (parts[0] === 'textos' && BOSS()) return await viewTexts(app, decodeURIComponent(parts[1] || ''));
     if (parts[0] === 'pm' && ME.role === 'owner') return await viewPmReports(app);
     if (ME.role === 'pm') {
       if (parts[0] === 'obras') return await viewJobs(app);
@@ -329,12 +356,13 @@ async function route() {
       if (parts[0] === 'obra') return await viewJob(app, Number(parts[1]), parts[2] || 'tareas');
       if (parts[0] === 'gastos') return await viewExpenses(app);
       if (parts[0] === 'casos') return await viewCases(app);
-      if (parts[0] === 'horas') return await viewHours(app);
-      if (parts[0] === 'reportes') return await viewReports(app);
-      if (parts[0] === 'cuentas') return await viewAccounts(app);
+      if (parts[0] === 'horas') return await viewHours(app, parts[1] || 'nomina', parts[2] || '');
+      if (parts[0] === 'dinero') return await viewMoney(app, parts[1] || 'cuentas');
+      if (parts[0] === 'reportes') return await viewMoney(app, 'reportes');
+      if (parts[0] === 'cuentas') return await viewMoney(app, 'cuentas');
       if (parts[0] === 'historial') return await viewAudit(app, parts[1] ? Number(parts[1]) : null);
-      if (parts[0] === 'proyecciones') return await viewForecast(app);
-      if (parts[0] === 'equipo') { await viewUsers(app); return await agentsCard(app); }
+      if (parts[0] === 'proyecciones') return await viewMoney(app, 'proyecciones');
+      if (parts[0] === 'equipo') { await viewUsers(app); return MOD('agentes') ? await agentsCard(app) : null; }
       if (parts[0] === 'agentes') return await viewAgentManual(app);
       return await viewDashboard(app);
     }
@@ -371,6 +399,7 @@ async function boot() {
   if (ME.must_change) { app.className = 'full'; return viewMustChange(app); }
   CAT = await api('GET', '/api/catalog');
   setTimeout(() => showInstall(), 1500);
+  if (BOSS()) loadSmsStatus();
   TASK_EN = new Map(CAT.taskPairs); TASK_ES = new Map(CAT.taskPairs.map(([es, en]) => [en, es]));
   route();
 }
@@ -383,9 +412,12 @@ function viewLogin(app) {
     <div class="field"><label for="p">${t('Contraseña')}</label><input id="p" type="password" autocomplete="current-password" required></div>
     <div class="field" id="cf" hidden><label for="c">${t('Código de 6 dígitos')}</label><input id="c" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>
     <button class="primary" style="width:100%;justify-content:center">${t('Entrar')}</button>
-    <p style="text-align:center;margin:.9rem 0 0"><a href="#" id="forgot" class="small">${t('¿Olvidó su usuario o contraseña?')}</a></p></form></div>`;
+    <p style="text-align:center;margin:.9rem 0 0"><a href="#" id="forgot" class="small">${t('¿Olvidó su usuario o contraseña?')}</a></p>
+    <div class="newacc"><b>${t('¿Es su primera vez?')}</b> <span class="small muted">${t('Su usuario y contraseña se los da {co}.', { co: esc(COMPANY.name) })}</span><button type="button" class="btn" id="newacc">${t('No tengo usuario: pedir acceso')}</button>
+      <a href="#" class="small" data-video="instalar" style="margin-top:.4rem">🎬 ${t('Video: cómo instalar y entrar')}</a></div></form></div>`;
   bindLang(app);
   $('#forgot').onclick = e => { e.preventDefault(); forgotDialog(); };
+  $('#newacc').onclick = () => newAccessDialog();
   setTimeout(() => showInstall(), 1200);
   $('#lf').onsubmit = async e => {
     e.preventDefault();
@@ -489,6 +521,8 @@ async function viewDashboard(app) {
   const mal = document.createElement('div'); app.insertBefore(mal, app.children[1]);
   await marginAlertsCard(mal).catch(e => console.error(e));
   await ownerProCards(app, () => viewDashboard(app)).catch(e => console.error(e));
+  await billingDueCard(app).catch(e => console.error(e));
+  await papersAlertCard(app).catch(e => console.error(e));
   await Promise.all([casesCard(cs, { title: '⚠️ ' + t('Casos abiertos'), onlyOpen: true, showJob: true, after: () => viewDashboard(app) }), ownerNoticesCard(nb, () => viewDashboard(app)), ownerDocsCard(db2, () => viewDashboard(app)), ownerScansCard(sc, () => viewDashboard(app))]);
 }
 
@@ -523,7 +557,7 @@ async function viewJobs(app) {
   const jobs = await api('GET', '/api/jobs');
   const filter = viewJobs.filter || 'abiertas';
   const shown = jobs.filter(j => filter === 'todas' || (filter === 'abiertas' ? !['terminado', 'cancelado'].includes(j.status) : j.status === filter));
-  app.innerHTML = `<div class="row between"><h1>${t('Obras')}</h1><div class="row">${ME.role === 'owner' ? `<button id="imx">📥 ${t('Importar de Excel')}</button>` : ''}<button class="primary" id="nj">${t('+ Nueva obra')}</button></div></div>
+  app.innerHTML = `<div class="row between"><h1>${t('Obras')}</h1><div class="row">${ME.role === 'owner' && MOD('importar') ? `<button id="imx">📥 ${t('Importar de Excel')}</button>` : ''}<button class="primary" id="nj">${t('+ Nueva obra')}</button></div></div>
     <div class="row" style="margin-bottom:1rem"><select id="flt" style="width:auto">${[['abiertas', t('Abiertas')], ...CAT.jobStatus.map(s => [s.key, L(s)]), ['todas', t('Todas')]]
       .map(([k, l]) => `<option value="${k}" ${k === filter ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select><span class="muted small">${t('{n} obra(s)', { n: shown.length })}</span></div>
     <div class="card">${shown.length ? `${jobCards(shown)}<div class="table-wrap desktop-only"><table><thead><tr><th>${t('Cliente')}</th><th>${t('Estado')}</th><th>${t('Avance')}</th><th class="num">${t('Contrato')}</th><th class="num">${t('Ganancia a la fecha')}</th><th class="num">${t('Por cobrar')}</th></tr></thead><tbody>
@@ -538,7 +572,7 @@ async function viewJobs(app) {
   $$('[data-go]', app).forEach(r => { r.onclick = () => { location.hash = r.dataset.go; }; });
 }
 
-const TABS = () => [['tareas', t('Tareas')], ['partidas', t('Partidas')], ['materiales', t('Materiales')], ['gastos', t('Gastos')], ['subs', t('Subcontratistas')], ['presupuesto', t('Presupuesto')], ['cambios', t('Change orders')], ['pagos', t('Pagos del cliente')], ['diario', t('Reporte diario')], ['fotos', t('Fotos')], ['permisos', t('Permisos')], ['casos', t('Casos')], ['datos', t('Datos y acceso')]];
+const TABS = () => [['tareas', t('Tareas')], ...(ME.role === 'owner' ? [['propuesta', t('Propuesta y cobros')]] : []), ['partidas', t('Partidas')], ['materiales', t('Materiales')], ['gastos', t('Gastos')], ['subs', t('Subcontratistas')], ['cambios', t('Change orders')], ['pagos', t('Pagos del cliente')], ['diario', t('Reporte diario')], ['fotos', t('Fotos')], ['permisos', t('Permisos')], ['casos', t('Casos')], ['datos', t('Datos y acceso')]];
 
 async function viewJob(app, id, tab) {
   const [d, users] = await Promise.all([api('GET', `/api/jobs/${id}`), api('GET', '/api/users')]);
@@ -569,7 +603,7 @@ async function viewJob(app, id, tab) {
     if (await formDialog({ title: t('Editar obra'), fields: jobFormFields(j, users.filter(u => u.role === 'pm' && u.active)), onSubmit: async v => { r = await api('PUT', `/api/jobs/${id}`, { ...v, _expect: { quoted_cents: j.quoted_cents, status: j.status } }); } })) { toast(t('Guardado')); reload(); shareIfClient(r); }
   };
   const box = $('#tab');
-  const tabs = { tareas: tabTasks, gastos: tabExpenses, subs: tabSubs, cambios: tabChanges, pagos: tabPayments, fotos: tabPhotos, casos: tabCases, datos: tabData, presupuesto: tabBudget, permisos: tabPermits, diario: tabDaily, materiales: tabMaterials, partidas: tabLines };
+  const tabs = { tareas: async (box, d, o) => { await tabTasks(box, d, o); if (ME.role === 'owner' && ['activo', 'terminado'].includes(d.job.status)) await closeoutCard(box, o.id); }, gastos: tabExpenses, subs: async (box, d, o) => { await tabSubs(box, d, o); if (ME.role === 'owner') await jobLaborCard(box, o.id); }, cambios: tabChanges, pagos: tabPayments, fotos: tabPhotos, casos: tabCases, datos: tabData, presupuesto: tabBudget, permisos: tabPermits, diario: tabDaily, materiales: tabMaterials, propuesta: tabProposal, partidas: async (box, d, o) => { await tabLines(box, d, o); if (ME.role === 'owner') { const p = document.createElement('p'); p.className = 'small muted'; p.innerHTML = `${t('¿Prefiere verlo por categoría de gasto?')} <a href="#/obra/${o.id}/presupuesto">${t('Presupuesto por categoría')}</a>`; box.appendChild(p); } } };
   if (ME.role === 'owner') splitStrip($('#splitbox'), id).catch(() => {});
   await (tabs[tab] || tabTasks)(box, d, { id, workers, users, reload });
   if (!tabs[tab] || tab === 'tareas') await planCard(box, d, { id, workers, reload });
@@ -656,16 +690,20 @@ function expenseFields(d, e = {}) {
   ];
 }
 function tabExpenses(box, d, { id, reload }) {
-  const byCat = CAT.categories.map(c => [c, d.expenses.filter(e => e.category === c.key).reduce((s, e) => s + e.amount_cents, 0)]).filter(x => x[1]);
+  const g = tabExpenses.g || 'todo';
+  const list = d.expenses.filter(e => inGroup(e, g)), shown = list.reduce((s, e) => s + e.amount_cents, 0);
+  const byCat = CAT.categories.map(c => [c, list.filter(e => e.category === c.key).reduce((s, e) => s + e.amount_cents, 0)]).filter(x => x[1]);
   box.innerHTML = `<div class="card"><div class="row between"><h2>${t('Gastos')}</h2><div class="row"><button id="scanj">📷 ${t('Escanear tickets')}</button><button class="primary" id="ae">${t('+ Gasto')}</button></div></div>
-    ${byCat.length ? `<div class="row small" style="margin:.5rem 0 1rem">${byCat.map(([c, v]) => `<span class="badge ${c.key === 'retrabajo' ? 'b-late' : 'b-pendiente'}">${esc(L(c))}: ${fmt0(v)}</span>`).join('')}</div>` : ''}
-    ${d.expenses.length ? `<div class="table-wrap"><table><thead><tr><th>${t('Fecha')}</th><th>${t('Qué')}</th><th>${t('Categoría')}</th><th>${t('Compró')}</th><th class="num">${t('Monto')}</th><th></th></tr></thead><tbody>
-      ${d.expenses.map(e => `<tr data-id="${e.id}"><td class="nowrap">${fdate(e.date)}</td><td>${esc(e.description)}<div class="small muted">${esc(e.vendor)}${e.sub_name ? ' · Sub: ' + esc(e.sub_name) : ''}</div></td>
-        <td>${esc(catLabel(e.category))}</td><td>${esc(e.bought_by)}${e.created_by_name && e.created_by_name !== e.bought_by ? `<div class="small muted">${t('registró {x}', { x: esc(e.created_by_name) })}</div>` : ''}</td>
-        <td class="num">${fmt(e.amount_cents)}</td>
-        <td class="nowrap">${e.receipt_id ? `<button class="sm" data-view="${e.receipt_id}" title="${t('Ver recibo')}">🧾</button>` : ''}<button class="sm" data-ed>✎</button><button class="sm danger" data-del>✕</button></td></tr>`).join('')}
-      </tbody><tfoot><tr><td colspan="4">${t('Total')}</td><td class="num">${fmt(d.money.spent)}</td><td></td></tr></tfoot></table></div>`
-    : `<p class="empty">${t('Sin gastos registrados.')}</p>`}</div>`;
+    ${d.expenses.length ? expGroupBar(d.expenses, g) + expGroupSummary(list, g) : ''}
+    ${byCat.length > 1 ? `<div class="row small" style="margin:.5rem 0 1rem">${byCat.map(([c, v]) => `<span class="badge ${c.key === 'retrabajo' ? 'b-late' : 'b-pendiente'}">${esc(L(c))}: ${fmt0(v)}</span>`).join('')}</div>` : ''}
+    ${list.length ? `<div class="table-wrap"><table class="exptable"><thead><tr><th>${t('Fecha')}</th><th>${t('Qué')}</th><th>${t('Categoría')}</th><th>${t('Compró')}</th><th class="num">${t('Monto')}</th><th></th></tr></thead><tbody>
+      ${list.map(e => `<tr data-id="${e.id}"><td class="nowrap" data-l="${t('Fecha')}">${fdate(e.date)}</td><td class="what">${esc(e.description)}<div class="small muted">${esc(e.vendor)}${e.sub_name ? ' · Sub: ' + esc(e.sub_name) : ''}</div></td>
+        <td data-l="${t('Categoría')}">${esc(catLabel(e.category))}</td><td data-l="${t('Compró')}">${esc(e.bought_by)}${e.created_by_name && e.created_by_name !== e.bought_by ? `<div class="small muted">${t('registró {x}', { x: esc(e.created_by_name) })}</div>` : ''}</td>
+        <td class="num" data-l="${t('Monto')}">${fmt(e.amount_cents)}</td>
+        <td class="nowrap acts">${e.receipt_id ? `<button class="sm" data-view="${e.receipt_id}" title="${t('Ver recibo')}">🧾</button>` : ''}<button class="sm" data-ed>✎</button><button class="sm danger" data-del>✕</button></td></tr>`).join('')}
+      </tbody><tfoot><tr><td colspan="4">${t('Total')}${g !== 'todo' ? ' · ' + esc(EXP_GROUPS().find(x => x[0] === g)[1]) : ''}</td><td class="num">${fmt(g === 'todo' ? d.money.spent : shown)}</td><td></td></tr></tfoot></table></div>`
+    : `<p class="empty">${d.expenses.length ? t('No hay gastos de este tipo en la obra.') : t('Sin gastos registrados.')}</p>`}</div>`;
+  $$('[data-grp]', box).forEach(b => { b.onclick = () => { tabExpenses.g = b.dataset.grp; tabExpenses(box, d, { id, reload }); }; });
   $('#scanj').onclick = () => scanFlow(id, reload);
   $('#ae').onclick = async () => { if (await formDialog({ title: t('Nuevo gasto'), fields: expenseFields(d), onSubmit: v => api('POST', `/api/jobs/${id}/expenses`, v) })) { toast(t('Gasto guardado')); reload(); } };
   $$('tr[data-id]', box).forEach(tr => {
@@ -786,7 +824,7 @@ function tabData(box, d, { id, users, reload }) {
   const j = d.job, clients = users.filter(u => u.role === 'client' && u.active);
   box.innerHTML = `<div class="grid two">
     <div class="card"><h2>${t('Datos')}</h2><table><tbody>
-      <tr><th>${t('Teléfono')}</th><td>${j.client_phone ? `<a href="tel:${esc(j.client_phone)}">${esc(j.client_phone)}</a>` : '—'}</td></tr>
+      <tr><th>${t('Teléfono')}</th><td>${j.client_phone ? `<a href="tel:${esc(j.client_phone)}">${esc(j.client_phone)}</a> · <a href="#/textos/${encodeURIComponent(smsPhone(j.client_phone))}">💬 ${t('Textos')}</a>` : '—'}</td></tr>
       <tr><th>${t('Email')}</th><td>${j.client_email ? `<a href="mailto:${esc(j.client_email)}">${esc(j.client_email)}</a>` : '—'}</td></tr>
       <tr><th>${t('Dirección')}</th><td>${j.address ? `<a target="_blank" rel="noopener" href="https://maps.google.com/?q=${encodeURIComponent(j.address)}">${esc(j.address)}</a>` : '—'}</td></tr>
       <tr><th>${t('Nos encontró por')}</th><td>${esc(j.lead_source) || '—'}</td></tr>
@@ -814,10 +852,41 @@ function tabData(box, d, { id, users, reload }) {
 }
 
 // ================= DUEÑO: gastos de todas las obras =================
+// Gastos separados en grupos: materiales, subs y trabajadores, y lo demás.
+const EXP_GROUPS = () => [
+  ['todo', t('Todo'), null],
+  ['material', '🧱 ' + t('Materiales'), ['material']],
+  ['gente', '👷 ' + t('Subs y trabajadores'), ['subcontratistas', 'mano_obra']],
+  ['otros', '📋 ' + t('Otros gastos'), null],
+];
+const expGroup = cat => (cat === 'material' ? 'material' : ['subcontratistas', 'mano_obra'].includes(cat) ? 'gente' : 'otros');
+const inGroup = (e, g) => !g || g === 'todo' || expGroup(e.category) === g;
+function expGroupBar(rows, sel) {
+  return `<div class="expgrp" role="group" aria-label="${t('Ver gastos de')}">${EXP_GROUPS().map(([k, l]) => { const r = rows.filter(e => inGroup(e, k));
+    return `<button type="button" data-grp="${k}" class="${k === sel ? 'on' : ''}" aria-pressed="${k === sel}"><span>${l}</span><b>${fmt0(r.reduce((s, e) => s + e.amount_cents, 0))}</b><small>${t('{n} gastos', { n: r.length })}</small></button>`; }).join('')}</div>`;
+}
+// Resumen del grupo: por persona (subs y trabajadores) o por tienda (materiales).
+function expGroupSummary(rows, g) {
+  if (g !== 'gente' && g !== 'material') return '';
+  const PAY = /zelle|cheque|check|efectivo|cash|transfer|venmo|tarjeta|card|paypal/i;
+  const person = e => { if (e.sub_name) return e.sub_name;
+    const h = /^(?:Horas|Tiempo extra|Hours|Overtime):\s*(.+)\s+\([\d.]+\s*h\b/.exec(e.description || ''); if (h) return h[1];
+    if (e.category === 'mano_obra') return e.bought_by || e.created_by_name || e.description;
+    return e.vendor && !PAY.test(e.vendor) ? e.vendor : (e.description || '—'); };
+  const key = e => (g === 'gente' ? person(e) : (e.vendor || '—'));
+  const m = new Map(); rows.forEach(e => { const k = key(e); const x = m.get(k) || { n: 0, c: 0, h: 0 }; x.n++; x.c += e.amount_cents; if (e.category === 'mano_obra') x.h++; m.set(k, x); });
+  const list = [...m.entries()].sort((a, b) => b[1].c - a[1].c);
+  if (!list.length) return '';
+  return `<div class="expsum"><b class="small">${g === 'gente' ? t('Por persona') : t('Por tienda')}</b>${list.map(([k, x]) => `<span class="pchip">${esc(k)}${g === 'gente' && x.h ? ' ⏱' : ''} · <b>${fmt0(x.c)}</b></span>`).join('')}
+    ${g === 'gente' ? `<span class="small muted">${t('⏱ = trabajador por hora')}</span>` : ''}</div>`;
+}
+
 async function viewExpenses(app) {
   const f = viewExpenses.f || { from: today().slice(0, 4) + '-01-01', to: today(), category: '' };
   const qs = new URLSearchParams(Object.entries(f).filter(([, v]) => v));
-  const rows = await api('GET', '/api/expenses?' + qs);
+  const all = await api('GET', '/api/expenses?' + qs);
+  const g = viewExpenses.g || 'todo';
+  const rows = all.filter(e => inGroup(e, g));
   const total = rows.reduce((s, e) => s + e.amount_cents, 0);
   app.innerHTML = `<h1>${t('Gastos')}</h1>
   <div class="card"><div class="fields" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
@@ -825,12 +894,14 @@ async function viewExpenses(app) {
     <div class="field"><label>${t('Hasta')}</label><input type="date" id="et" value="${f.to}"></div>
     <div class="field"><label>${t('Categoría')}</label><select id="ec"><option value="">${t('Todas')}</option>${CAT.categories.map(c => `<option value="${c.key}" ${c.key === f.category ? 'selected' : ''}>${esc(L(c))}</option>`).join('')}</select></div>
     <div class="field"><label>&nbsp;</label><button id="csv">${t('Descargar para Excel (CSV)')}</button></div></div>
+    ${expGroupBar(all, g)}${expGroupSummary(rows, g)}
     <p>${t('{n} gastos · Total {m}', { n: `<b>${rows.length}</b>`, m: `<b>${fmt(total)}</b>` })}</p>
-    ${rows.length ? `<div class="table-wrap"><table><thead><tr><th>${t('Fecha')}</th><th>${t('Obra')}</th><th>${t('Qué')}</th><th>${t('Categoría')}</th><th>${t('Compró')}</th><th class="num">${t('Monto')}</th></tr></thead><tbody>
-      ${rows.map(e => `<tr class="click" data-go="#/obra/${e.job_id}/gastos"><td class="nowrap">${fdate(e.date)}</td><td>${esc(e.client_name)}</td><td>${esc(e.description)}<div class="small muted">${esc(e.vendor)}${e.sub_name ? ' · ' + esc(e.sub_name) : ''}</div></td><td>${esc(catLabel(e.category))}</td><td>${esc(e.bought_by)}</td><td class="num">${fmt(e.amount_cents)}</td></tr>`).join('')}
+    ${rows.length ? `<div class="table-wrap"><table class="exptable"><thead><tr><th>${t('Fecha')}</th><th>${t('Obra')}</th><th>${t('Qué')}</th><th>${t('Categoría')}</th><th>${t('Compró')}</th><th class="num">${t('Monto')}</th></tr></thead><tbody>
+      ${rows.map(e => `<tr class="click" data-go="#/obra/${e.job_id}/gastos"><td class="nowrap" data-l="${t('Fecha')}">${fdate(e.date)}</td><td data-l="${t('Obra')}">${esc(e.client_name)}</td><td class="what">${esc(e.description)}<div class="small muted">${esc(e.vendor)}${e.sub_name ? ' · ' + esc(e.sub_name) : ''}</div></td><td data-l="${t('Categoría')}">${esc(catLabel(e.category))}</td><td data-l="${t('Compró')}">${esc(e.bought_by)}</td><td class="num" data-l="${t('Monto')}">${fmt(e.amount_cents)}</td></tr>`).join('')}
     </tbody></table></div>` : `<p class="empty">${t('No hay gastos en este rango.')}</p>`}</div>`;
   const upd = () => { viewExpenses.f = { from: $('#ef').value, to: $('#et').value, category: $('#ec').value }; viewExpenses(app); };
   ['#ef', '#et', '#ec'].forEach(s => { $(s).onchange = upd; });
+  $$('[data-grp]', app).forEach(b => { b.onclick = () => { viewExpenses.g = b.dataset.grp; viewExpenses(app); }; });
   $$('[data-go]', app).forEach(r => { r.onclick = () => { location.hash = r.dataset.go; }; });
   $('#csv').onclick = () => {
     const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -839,11 +910,32 @@ async function viewExpenses(app) {
       .concat(rows.map(e => [e.date, q(e.client_name), q(e.description), q(e.vendor), q(catLabel(e.category)), q(e.bought_by), q(e.sub_name), (e.amount_cents / 100).toFixed(2)].join(',')));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' }));
-    a.download = `${t('gastos')}-${f.from}-${f.to}.csv`; a.click();
+    a.download = `${t('gastos')}${g !== 'todo' ? '-' + g : ''}-${f.from}-${f.to}.csv`; a.click();
   };
 }
 
 // ================= DUEÑO: equipo y accesos =================
+// Crear usuario: la app inventa la contraseña temporal y enseña el mensaje para mandarle el acceso.
+async function newUserDialog(pre = {}) {
+  const R = ROLE(), langOpts = [['es', 'Español'], ['en', 'English']];
+  let made = null;
+  await formDialog({ title: t('Nuevo usuario'), submit: t('Crear y mandar acceso'), intro: pre.intro || '', fields: [
+      { name: 'role', label: t('Rol'), type: 'select', value: pre.role || 'worker', options: Object.entries(R) },
+      { name: 'lang', label: t('Idioma inicial'), type: 'select', value: pre.lang || 'es', options: langOpts, hint: t('La persona lo puede cambiar después con el botón ES | EN') },
+      { name: 'name', label: t('Nombre'), required: true, value: pre.name || '' },
+      { name: 'username', label: t('Usuario (para entrar)'), required: true, value: pre.username || '', hint: t('Ej. pedro.g — sin espacios. La contraseña la inventa la app y la persona pone la suya al entrar.') },
+      { name: 'phone', label: t('Teléfono'), type: 'tel', value: pre.phone || '', hint: t('Para mandarle su acceso por texto o WhatsApp') },
+      { name: 'trade', label: t('Oficio / empresa'), hint: t('Solo para trabajadores y subs') },
+      { name: 'pay_type', label: t('Si es trabajador: cómo se le paga'), type: 'select', value: 'sub', options: [['sub', t('Como sub (precio por trabajo)')], ['hora', t('Por hora')]] },
+      { name: 'rate_cents', label: t('Si es por hora: pago por hora ($)'), type: 'money', hint: t('Solo lo ven los dueños') },
+      { name: 'pm_limit_cents', label: t('Si es project manager: límite por gasto ($)'), type: 'money', value: '500', hint: t('Arriba de esto, el gasto lo autoriza un dueño') },
+      { name: 'pm_month_cents', label: t('Si es project manager: límite al mes ($)'), type: 'money', value: '5000' },
+      { name: 'tool_ventas', label: t('Prender herramienta de Ventas (agenda, citas, estimados)'), type: 'check', hint: t('Los vendedores ya la traen') },
+    ], onSubmit: async v => { const { tool_ventas, ...b } = v; if (b.role !== 'worker') { delete b.pay_type; delete b.rate_cents; } else if (b.pay_type === 'hora' && !Number(String(b.rate_cents || '').replace(/[^0-9.]/g, ''))) throw new Error(t('Ponga el pago por hora')); made = await api('POST', '/api/users', { ...b, request_id: pre.request_id || undefined, tools: tool_ventas && !['sales', 'worker', 'client'].includes(b.role) ? ['ventas'] : [] }); } });
+  if (made) { toast(t('Usuario creado')); await showTempAccess({ user: made, temp: made.temp, invite: true }); }
+  return made;
+}
+
 async function viewUsers(app) {
   const users = await api('GET', '/api/users');
   const R = ROLE();
@@ -855,20 +947,7 @@ async function viewUsers(app) {
         <td>${u.lang === 'en' ? 'English' : 'Español'}</td><td>${esc(u.phone)}</td><td>${u.active ? `<span class="badge b-hecho">${t('Activo')}</span>` : `<span class="badge b-cancelado">${t('Sin acceso')}</span>`}</td><td><button class="sm" data-ed>✎</button></td></tr>`).join('')}
     </tbody></table></div></div>`;
   const langOpts = [['es', 'Español'], ['en', 'English']];
-  $('#nu').onclick = async () => {
-    if (await formDialog({ title: t('Nuevo usuario'), submit: t('Crear'), fields: [
-      { name: 'role', label: t('Rol'), type: 'select', value: 'worker', options: Object.entries(R) },
-      { name: 'lang', label: t('Idioma inicial'), type: 'select', value: 'es', options: langOpts, hint: t('La persona lo puede cambiar después con el botón ES | EN') },
-      { name: 'name', label: t('Nombre'), required: true },
-      { name: 'username', label: t('Usuario (para entrar)'), required: true, hint: t('Ej. pedro.g — sin espacios') },
-      { name: 'password', label: t('Contraseña inicial'), type: 'password', required: true, hint: t('Mínimo 10 caracteres. Désela en persona; puede cambiarla en “Mi cuenta”.') },
-      { name: 'phone', label: t('Teléfono'), type: 'tel' },
-      { name: 'trade', label: t('Oficio / empresa'), hint: t('Solo para trabajadores y subs') },
-      { name: 'pm_limit_cents', label: t('Si es project manager: límite por gasto ($)'), type: 'money', value: '500', hint: t('Arriba de esto, el gasto lo autoriza un dueño') },
-      { name: 'pm_month_cents', label: t('Si es project manager: límite al mes ($)'), type: 'money', value: '5000' },
-      { name: 'tool_ventas', label: t('Prender herramienta de Ventas (agenda, citas, estimados)'), type: 'check', hint: t('Los vendedores ya la traen') },
-    ], onSubmit: v => { const { tool_ventas, ...b } = v; return api('POST', '/api/users', { ...b, tools: tool_ventas && !['sales', 'worker', 'client'].includes(b.role) ? ['ventas'] : [] }); } })) { toast(t('Usuario creado')); viewUsers(app); }
-  };
+  $('#nu').onclick = async () => { if (await newUserDialog()) viewUsers(app); };
   $$('tr[data-id]', app).forEach(tr => {
     const u = users.find(x => x.id === Number(tr.dataset.id));
     $('[data-ed]', tr).onclick = async () => {
@@ -940,8 +1019,11 @@ async function viewAccount(app) {
     const ai = await api('GET', '/api/scans/status').catch(() => ({ ai: false }));
     const sc = document.createElement('div'); sc.className = 'card';
     sc.innerHTML = `<h2>📷 ${t('Lectura automática de tickets')}</h2><p>${ai.ai ? `<span class="badge b-hecho">${t('Activada')}</span>` : `<span class="badge b-pendiente">${t('No configurada')}</span>`}</p>
-      <p class="small muted">${ai.ai ? t('Los tickets se leen solos (tienda, fecha, total) y se archivan en la obra correcta cuando la app está segura.') : t('Sin la lectura automática, el escaneo guarda la foto y usted llena el monto con un toque. Para activarla vea el LEEME (sección Escanear tickets).')}</p>`;
+      <p class="small muted">${ai.ai ? t('Los tickets se leen solos (tienda, fecha, total), se archivan en la obra correcta y en su partida cuando la app está segura. Lee con: {x}.', { x: ai.provider === 'grok' ? 'Grok (xAI)' : 'Claude' }) : t('Sin la lectura automática, el escaneo guarda la foto y usted llena el monto con un toque. Para activarla, ponga ANTHROPIC_API_KEY (Claude) o XAI_API_KEY (Grok) en Render → Environment.')}</p>`;
     app.appendChild(sc);
+    await modulesCard(app);
+    await smsSettingsCard(app);
+    await driveSettingsCard(app);
     const b = document.createElement('div'); b.className = 'card';
     b.innerHTML = `<h2>${t('Respaldo')}</h2><p class="small muted">${t('La app guarda una copia automática cada día (últimos 14 días) en la carpeta datos/backups. Aquí puede descargar una copia ahora para guardarla en otro lugar (USB, Google Drive). Las fotos están en datos/files.')}</p>
       <a class="btn primary" href="/api/backup">${t('Descargar respaldo de la base de datos')}</a>`;
@@ -1046,6 +1128,7 @@ async function viewClient(app, id) {
   await clientProCards(app, j, () => viewClient(app, id)).catch(e => console.error(e));
   await clientStatementCard(app, j).catch(e => console.error(e));
   await v2ClientCards(app, j);
+  await clientBillingCard(app, j).catch(e => console.error(e));
 }
 
 // ================= CALENDARIO, AVISOS Y NOVEDADES =================
@@ -1096,11 +1179,13 @@ function clientMessage(client, row) {
   if (client.hasPortal) m += ' ' + tl(lang, 'Vea los detalles en su portal: {url}', { url: appUrl() });
   return m;
 }
+const smsPhone = p => { const d = phoneDigits(p); return d ? '+' + d : ''; };
 const phoneDigits = p => { let d = String(p || '').replace(/\D/g, ''); if (d.length === 10) d = '1' + d; return d; };
 function sendButtons(phone, text, email, subject) {
   const d = phoneDigits(phone), body = encodeURIComponent(text);
   const b = [];
-  if (d) b.push(`<a class="btn sm primary" target="_blank" rel="noopener" href="https://wa.me/${d}?text=${body}">WhatsApp</a>`,
+  if (d && BOSS() && typeof SMSST !== 'undefined' && SMSST.enabled) b.push(`<button class="sm primary" data-smsapp data-phone="+${d}" data-text="${esc(text)}">💬 ${t('Texto desde la app')}</button>`);
+  if (d) b.push(`<a class="btn sm ${BOSS() && typeof SMSST !== 'undefined' && SMSST.enabled ? '' : 'primary'}" target="_blank" rel="noopener" href="https://wa.me/${d}?text=${body}">WhatsApp</a>`,
     `<a class="btn sm" href="sms:+${d}?&body=${body}">${t('Mensaje de texto')}</a>`);
   if (email) b.push(`<a class="btn sm" href="mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject || 'Elevated Exteriors')}&body=${body}">Email</a>`);
   if (!b.length) b.push(`<span class="small muted">${t('Sin teléfono ni email registrado')}</span>`);
@@ -1301,47 +1386,74 @@ async function clientUpdatesCard(box, jobId) {
   });
 }
 
-// Calendario mensual (computadora) / agenda por día (teléfono).
+// Calendario: vista por mes, semana o día (se recuerda la última que eligió).
 async function viewCalendar(app) {
   const now = today();
-  const ym = viewCalendar.m || now.slice(0, 7);
-  const [y, m] = ym.split('-').map(Number);
-  const first = new Date(Date.UTC(y, m - 1, 1)), last = new Date(Date.UTC(y, m, 0));
-  const start = new Date(first); start.setUTCDate(1 - first.getUTCDay());
-  const end = new Date(last); end.setUTCDate(last.getUTCDate() + (6 - last.getUTCDay()));
   const iso = d => d.toISOString().slice(0, 10);
+  const D = s => new Date(s + 'T00:00:00Z');
+  const add = (s, n) => { const d = D(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
+  let mode = viewCalendar.mode; if (!mode) { try { mode = localStorage.getItem('ee_calview'); } catch { /* */ } }
+  if (!['mes', 'semana', 'dia'].includes(mode)) mode = matchMedia('(max-width: 760px)').matches ? 'semana' : 'mes';
+  const cur = viewCalendar.d || now;
+  const ym = cur.slice(0, 7);
+  const [y, m] = ym.split('-').map(Number);
+  let start, end;
+  if (mode === 'mes') {
+    const first = new Date(Date.UTC(y, m - 1, 1)), last = new Date(Date.UTC(y, m, 0));
+    start = add(iso(first), -first.getUTCDay()); end = add(iso(last), 6 - last.getUTCDay());
+  } else if (mode === 'semana') { start = add(cur, -D(cur).getUTCDay()); end = add(start, 6); }
+  else { start = end = cur; }
   const who = viewCalendar.user || '';
   const [rows, users] = await Promise.all([
-    api('GET', `/api/calendar?from=${iso(start)}&to=${iso(end)}${who ? '&user=' + who : ''}`),
+    api('GET', `/api/calendar?from=${start}&to=${end}${who ? '&user=' + who : ''}`),
     BOSS() ? api('GET', '/api/users') : Promise.resolve([]),
   ]);
   const byDay = {};
   for (const r of rows) {
-    const s = r.planned_date, e = r.planned_end && r.planned_end > s ? r.planned_end : s;
-    let d = new Date(s + 'T00:00:00Z'), k = 0;
-    while (iso(d) <= e && k++ < 31) { (byDay[iso(d)] = byDay[iso(d)] || []).push(r); d.setUTCDate(d.getUTCDate() + 1); }
+    const s0 = r.planned_date, e = r.planned_end && r.planned_end > s0 ? r.planned_end : s0;
+    let d = s0 < start ? start : s0, k = 0;
+    while (d <= e && d <= end && k++ < 62) { (byDay[d] = byDay[d] || []).push(r); d = add(d, 1); }
   }
   const late = r => r.status !== 'hecho' && (r.planned_end || r.planned_date) < now;
   const chip = r => `<button class="chip s-${r.status} ${late(r) ? 'late' : ''}" data-t="${r.id}" title="${esc(taskTitle(r.title))} — ${esc(r.client_name)}">
     ${r.open_notices ? '⏳ ' : ''}${esc(taskTitle(r.title))}<span>${esc(r.client_name)}${BOSS() && r.assignee_name ? ' · ' + esc(r.assignee_name) : ''}</span></button>`;
+  const ST = { pendiente: t('Pendiente'), en_progreso: t('En progreso'), hecho: t('Hecho') };
+  const card = r => `<button class="dcard s-${r.status} ${late(r) ? 'late' : ''}" data-t="${r.id}"><div class="row between"><b>${r.open_notices ? '⏳ ' : ''}${esc(taskTitle(r.title))}</b>
+      <span class="badge b-${r.status}">${late(r) ? t('Atrasada') : ST[r.status] || ''}</span></div>
+    <div>${esc(r.client_name)}${r.address ? ` · <span class="muted">${esc(r.address)}</span>` : ''}</div>
+    <div class="small muted">${esc(dateRange(r))}${r.assignee_name ? ' · 👷 ' + esc(r.assignee_name) : ` · ${t('Sin asignar')}`}</div></button>`;
   const cap = x => x.charAt(0).toUpperCase() + x.slice(1);
-  const monthName = cap(first.toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-MX', { month: 'long', year: 'numeric', timeZone: 'UTC' }));
-  const wd = [...Array(7)].map((_, i) => new Date(Date.UTC(2026, 10, 1 + i)).toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-MX', { weekday: 'short', timeZone: 'UTC' }));
-  const days = []; for (let d = new Date(start); d <= end; d.setUTCDate(d.getUTCDate() + 1)) days.push(iso(d));
+  const loc = LANG === 'en' ? 'en-US' : 'es-MX';
+  const fmtD = (s, o) => D(s).toLocaleDateString(loc, { timeZone: 'UTC', ...o });
+  const title = mode === 'mes' ? cap(fmtD(cur.slice(0, 7) + '-01', { month: 'long', year: 'numeric' }))
+    : mode === 'semana' ? `${fmtD(start, { day: 'numeric', month: 'short' })} – ${fmtD(end, { day: 'numeric', month: 'short', year: 'numeric' })}`
+    : cap(fmtD(cur, { weekday: 'long', day: 'numeric', month: 'long' }));
+  const wd = [...Array(7)].map((_, i) => new Date(Date.UTC(2026, 10, 1 + i)).toLocaleDateString(loc, { weekday: 'short', timeZone: 'UTC' }));
+  const days = []; for (let d = start; d <= end; d = add(d, 1)) days.push(d);
   const workers = users.filter(u => u.role === 'worker' && u.active);
-  app.innerHTML = `<div class="row between"><h1>${esc(monthName)}</h1>
-    <div class="row"><button id="prev" aria-label="${t('Mes anterior')}">←</button><button id="tod">${t('Hoy')}</button><button id="next" aria-label="${t('Mes siguiente')}">→</button></div></div>
-    ${BOSS() ? `<div class="row" style="margin-bottom:.75rem"><select id="who" style="width:auto"><option value="">${t('Todos')}</option>${workers.map(w => `<option value="${w.id}" ${String(w.id) === String(who) ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select>
+  const L = { mes: [t('Mes anterior'), t('Mes siguiente')], semana: [t('Semana anterior'), t('Semana siguiente')], dia: [t('Día anterior'), t('Día siguiente')] }[mode];
+  let body;
+  if (mode === 'mes') body = `<div class="cal">${wd.map(w => `<div class="cal-h">${esc(w)}</div>`).join('')}
+      ${days.map(d => `<div class="cal-d ${d.slice(0, 7) !== ym ? 'out' : ''} ${d === now ? 'today' : ''}"><a href="#" class="num" data-day="${d}">${Number(d.slice(8))}</a>${(byDay[d] || []).map(chip).join('')}</div>`).join('')}</div>
+    <div class="agenda">${days.filter(d => d.slice(0, 7) === ym && byDay[d]).map(d => `<div class="ag-day ${d === now ? 'today' : ''}"><a href="#" class="ag-date" data-day="${d}">${esc(cap(fdateIn(LANG, d)))}</a>${byDay[d].map(chip).join('')}</div>`).join('')
+      || `<p class="empty">${t('No hay tareas programadas este mes.')}</p>`}</div>`;
+  else if (mode === 'semana') body = `<div class="cal-week">${days.map(d => `<div class="cw-d ${d === now ? 'today' : ''}"><a href="#" class="cw-h" data-day="${d}"><span>${esc(cap(fmtD(d, { weekday: 'short' })))}</span><b>${Number(d.slice(8))}</b></a>
+      <div class="cw-items">${(byDay[d] || []).map(chip).join('') || `<div class="cw-empty small muted">—</div>`}</div></div>`).join('')}</div>`;
+  else body = `<div class="cal-day">${(byDay[cur] || []).map(card).join('') || `<p class="empty">${t('No hay tareas programadas este día.')}</p>`}</div>`;
+  app.innerHTML = `<div class="row between wrap"><h1 style="margin:0">${esc(title)}</h1>
+    <div class="row wrap calnav"><div class="seg" role="group">${[['dia', t('Día')], ['semana', t('Semana')], ['mes', t('Mes')]].map(([k, l]) => `<button class="${k === mode ? 'on' : ''}" data-mode="${k}" aria-pressed="${k === mode}">${l}</button>`).join('')}</div>
+      <span class="row" style="gap:.4rem"><button id="prev" aria-label="${L[0]}">←</button><button id="tod">${t('Hoy')}</button><button id="next" aria-label="${L[1]}">→</button></span></div></div>
+    ${BOSS() ? `<div class="row" style="margin:.75rem 0"><select id="who" style="width:auto"><option value="">${t('Todos')}</option>${workers.map(w => `<option value="${w.id}" ${String(w.id) === String(who) ? 'selected' : ''}>${esc(w.name)}</option>`).join('')}</select>
       <span class="small muted">${t('Toque una tarea para reprogramarla o avisar un atraso.')}</span></div>`
       : `<p class="small muted">${t('Sus tareas programadas. Toque una para avisar si se va a atrasar.')}</p>`}
-    <div class="legend small"><span class="chip s-pendiente">${t('Pendiente')}</span><span class="chip s-en_progreso">${t('En progreso')}</span><span class="chip s-hecho">${t('Hecho')}</span><span class="chip late">${t('Atrasada')}</span><span>⏳ ${t('esperando respuesta')}</span></div>
-    <div class="cal">${wd.map(w => `<div class="cal-h">${esc(w)}</div>`).join('')}
-      ${days.map(d => `<div class="cal-d ${d.slice(0, 7) !== ym ? 'out' : ''} ${d === now ? 'today' : ''}"><div class="num">${Number(d.slice(8))}</div>${(byDay[d] || []).map(chip).join('')}</div>`).join('')}</div>
-    <div class="agenda">${days.filter(d => d.slice(0, 7) === ym && byDay[d]).map(d => `<div class="ag-day ${d === now ? 'today' : ''}"><div class="ag-date">${esc(cap(fdateIn(LANG, d)))}</div>${byDay[d].map(chip).join('')}</div>`).join('')
-      || `<p class="empty">${t('No hay tareas programadas este mes.')}</p>`}</div>`;
-  const move = k => { const d = new Date(Date.UTC(y, m - 1 + k, 1)); viewCalendar.m = iso(d).slice(0, 7); viewCalendar(app); };
-  $('#prev').onclick = () => move(-1); $('#next').onclick = () => move(1);
-  $('#tod').onclick = () => { viewCalendar.m = now.slice(0, 7); viewCalendar(app); };
+    ${mode === 'dia' ? '' : `<div class="legend small"><span class="chip s-pendiente">${t('Pendiente')}</span><span class="chip s-en_progreso">${t('En progreso')}</span><span class="chip s-hecho">${t('Hecho')}</span><span class="chip late">${t('Atrasada')}</span><span>⏳ ${t('esperando respuesta')}</span></div>`}
+    ${body}`;
+  const go = (d, md = mode) => { viewCalendar.d = d; viewCalendar.mode = md; try { localStorage.setItem('ee_calview', md); } catch { /* */ } viewCalendar(app); };
+  const step = k => mode === 'mes' ? go(iso(new Date(Date.UTC(y, m - 1 + k, 1)))) : go(add(cur, k * (mode === 'semana' ? 7 : 1)));
+  $('#prev').onclick = () => step(-1); $('#next').onclick = () => step(1);
+  $('#tod').onclick = () => go(now);
+  $$('[data-mode]', app).forEach(b => { b.onclick = () => go(cur, b.dataset.mode); });
+  $$('[data-day]', app).forEach(a => { a.onclick = e => { e.preventDefault(); go(a.dataset.day, 'dia'); }; });
   if ($('#who')) $('#who').onchange = e => { viewCalendar.user = e.target.value; viewCalendar(app); };
   const reload = () => viewCalendar(app);
   $$('[data-t]', app).forEach(b => {
@@ -2145,36 +2257,6 @@ async function workerClockCard(box, jobs, refresh) {
 }
 
 // ---------- 3) Reloj: página del dueño ----------
-async function viewHours(app) {
-  const [d, users] = await Promise.all([api('GET', '/api/time'), api('GET', '/api/users')]);
-  const workers = users.filter(u => u.role === 'worker' && u.active);
-  app.innerHTML = `<h1>${t('Horas y reloj')}</h1><p class="muted small">${t('Últimos 14 días. Con el pago por hora de cada trabajador, las horas se suman solas como gasto de mano de obra en la obra (y la ganancia se recalcula). Para subs con precio cerrado deje el pago por hora en $0.')}</p>
-    <div class="card"><h2>${t('Resumen por trabajador')}</h2>${d.by_user.length ? `<div class="table-wrap"><table><thead><tr><th>${t('Trabajador')}</th><th class="num">${t('Horas')}</th><th class="num">${t('Costo')}</th></tr></thead><tbody>
-      ${d.by_user.map(u => `<tr><td>${esc(u.user_name)}</td><td class="num">${hm(u.minutes)}</td><td class="num">${fmt(u.cost_cents)}</td></tr>`).join('')}</tbody></table></div>` : `<p class="empty">${t('Nadie ha marcado entrada todavía.')}</p>`}</div>
-    <div class="card"><h2>${t('Entradas y salidas')}</h2>${d.entries.length ? `<div class="table-wrap"><table><thead><tr><th>${t('Día')}</th><th>${t('Trabajador')}</th><th>${t('Obra')}</th><th>${t('Entrada')}</th><th>${t('Salida')}</th><th class="num">${t('Horas')}</th><th class="num">${t('Costo')}</th><th></th></tr></thead><tbody>
-      ${d.entries.map(e => `<tr data-id="${e.id}" class="${e.forgot ? 'warnrow' : ''}"><td class="nowrap">${fdayLocal(e.in_at)}</td><td>${esc(e.user_name)}</td><td>${esc(e.client_name)}</td>
-        <td class="nowrap">${ftime(e.in_at)} ${distLabel(e.in_dist)}</td><td class="nowrap">${e.open ? (e.forgot ? `<b>⚠️ ${t('olvidó marcar salida')}</b>` : `<span class="badge b-en_progreso">${t('trabajando')}</span>`) : ftime(e.out_at) + ' ' + distLabel(e.out_dist)}</td>
-        <td class="num">${hm(e.minutes)}</td><td class="num">${fmt(e.cost_cents)}</td><td class="nowrap"><button class="sm" data-ed>✎</button>${e.in_lat != null ? `<a class="btn sm" target="_blank" rel="noopener" href="https://maps.google.com/?q=${e.in_lat},${e.in_lng}">📍</a>` : ''}</td></tr>`).join('')}</tbody></table></div>` : `<p class="empty">—</p>`}</div>
-    <div class="card"><h2>${t('Pago por hora')}</h2><p class="small muted">${t('Solo lo ven los dueños.')}</p>${workers.map(w => `<div class="row between rate" data-id="${w.id}"><span>${esc(w.name)}${w.trade ? ` <span class="small muted">(${esc(w.trade)})</span>` : ''}</span><button class="sm" data-rate>${t('Cambiar')}</button></div>`).join('') || `<p class="empty">—</p>`}</div>`;
-  $$('tr[data-id]', app).forEach(tr => {
-    const e = d.entries.find(x => x.id === Number(tr.dataset.id));
-    $('[data-ed]', tr).onclick = async () => {
-      if (await formDialog({ title: t('Corregir horas: {x}', { x: e.user_name }), fields: [
-        { name: 'in_at', label: t('Entrada'), type: 'datetime', value: localInput(e.in_at), required: true },
-        { name: 'out_at', label: t('Salida'), type: 'datetime', value: localInput(e.out_at || ''), required: true },
-        { name: 'note', label: t('Nota'), value: e.note }],
-        extraButton: { label: t('Borrar'), danger: true, onClick: () => api('DELETE', `/api/time/${e.id}`) },
-        onSubmit: v => api('PUT', `/api/time/${e.id}`, { in_at: inputToUtc(v.in_at), out_at: inputToUtc(v.out_at), note: v.note, _expect: { in_at: e.in_at, out_at: e.out_at } }) })) { toast(t('Guardado')); viewHours(app); }
-    };
-  });
-  $$('.rate[data-id]', app).forEach(el => {
-    $('[data-rate]', el).onclick = async () => {
-      if (await formDialog({ title: t('Pago por hora'), fields: [{ name: 'rate_cents', label: t('Pago por hora ($)'), type: 'money', hint: t('$0 = no se calcula costo (subs con precio cerrado)') }],
-        onSubmit: v => api('PUT', `/api/users/${el.dataset.id}/rate`, v) })) toast(t('Guardado'));
-    };
-  });
-}
-
 // ---------- Dueño: tarjetas del inicio ----------
 async function ownerProCards(app, refresh) {
   const anchor = app.firstElementChild;

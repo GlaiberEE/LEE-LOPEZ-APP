@@ -20,11 +20,13 @@ const HELP = [
   { id: 'password', roles: ['owner', 'pm', 'sales', 'worker', 'client'], icon: '🔑', screens: ['#/cuenta'],
     es: ['Contraseña y seguridad', [
       'Cambie su contraseña en Mi cuenta (mínimo 10 caracteres).',
+      '¿Primera vez y no tiene usuario? En la pantalla de entrada toque "No tengo usuario: pedir acceso". Los dueños lo crean y le llega por texto o WhatsApp.',
       'Si la olvida: en la pantalla de entrada toque "¿Olvidó su usuario o contraseña?". Le llega por WhatsApp una contraseña temporal de 24 horas y al entrar pone una nueva.',
       'Recomendado para dueños y PMs: "Entrada en 2 pasos" en Mi cuenta, con Google Authenticator.',
       'Nunca comparta su contraseña: cada persona tiene la suya y todo queda registrado con su nombre.']],
     en: ['Password and security', [
       'Change your password in My account (at least 10 characters).',
+      'First time and no user? On the sign-in screen tap "I don\'t have a user: request access". The owners create it and you get it by text or WhatsApp.',
       'If you forget it: on the sign-in screen tap "Forgot your username or password?". You get a 24-hour temporary password by WhatsApp and set a new one when you sign in.',
       'Recommended for owners and PMs: "2-step sign-in" in My account, with Google Authenticator.',
       'Never share your password: each person has their own and everything is logged with their name.']] },
@@ -33,14 +35,16 @@ const HELP = [
   { id: 'start', roles: ['owner'], icon: '🚀', screens: ['#/', '#/equipo'],
     es: ['Primeros pasos', [
       'Equipo y accesos → "+ Usuario": cree a su socio (Dueño), PMs, vendedores, subs y clientes. Ponga teléfono, oficio e idioma.',
-      'Para mandarle su acceso a alguien: ✎ → "🔑 Contraseña temporal" → WhatsApp (lleva el enlace, el usuario y la contraseña).',
+      'Usted no inventa contraseñas: al tocar "Crear y mandar acceso", la app hace una temporal (vale 7 días) y le enseña el mensaje para mandarlo por texto o WhatsApp con el enlace y el usuario. La persona pone su propia contraseña al entrar.',
+      'Si alguien nuevo toca "No tengo usuario: pedir acceso" en la pantalla de entrada, le sale en Inicio con el botón "Crear usuario" ya lleno con su nombre y teléfono.',
       'Inicio le muestra lo pendiente: autorizaciones, margen bajo, prospectos, tickets por asignar, presupuestos al límite.',
-      'Hoy le muestra cada obra: qué paso va ahora, cuál sigue y qué sub sigue.']],
+      'Inicio → Hoy en las obras le muestra cada obra: qué paso va ahora, cuál sigue y qué sub sigue.']],
     en: ['Getting started', [
       'Team and access → "+ User": create your partner (Owner), PMs, salespeople, subs and clients. Add phone, trade and language.',
-      'To send someone their access: ✎ → "🔑 Temporary password" → WhatsApp (includes link, username and password).',
+      'You don\'t make up passwords: when you tap "Create and send access", the app makes a temporary one (valid 7 days) and shows the message to send by text or WhatsApp with the link and username. The person sets their own password when they log in.',
+      'If someone new taps "I don\'t have a user: request access" on the login screen, it shows on Home with a "Create user" button already filled with their name and phone.',
       'Home shows what is pending: approvals, low margin, leads, receipts to assign, budgets at the limit.',
-      'Today shows each job: current step, next step and which sub is next.']] },
+      'Home → Today on jobs shows each job: current step, next step and which sub is next.']] },
   { id: 'job', roles: ['owner', 'pm'], icon: '🏗️', screens: ['#/obras', '#/obra'],
     es: ['Crear una obra y su plan de trabajo', [
       'Obras → "+ Nueva obra": cliente, dirección, tipo, contrato y fechas.',
@@ -80,57 +84,65 @@ const HELP = [
     es: ['Reparto de ganancia y alerta de margen', [
       'Cada obra muestra cuánto le toca a cada quien (normal: Jack 35%, Glaiber 35%, empresa 30%).',
       'Para una obra especial: "Cambiar en esta obra".',
-      'Para cambiar el reparto normal o la alerta de margen: Reportes → "Reparto normal y alerta de margen". Al otro dueño le llega un aviso.',
-      'Reportes → Reparto de ganancias: total del año por persona, real (obras terminadas) y proyectado (activas).']],
+      'Para cambiar el reparto normal o la alerta de margen: Dinero → Reportes → "Reparto normal y alerta de margen". Al otro dueño le llega un aviso.',
+      'Dinero → Reportes → Reparto de ganancias: total del año por persona, real (obras terminadas) y proyectado (activas).']],
     en: ['Profit split and margin alert', [
       'Each job shows each person\'s share (standard: Jack 35%, Glaiber 35%, company 30%).',
       'For a special job: "Change for this job".',
-      'To change the standard split or margin alert: Reports → "Standard split and margin alert". The other owner gets a notice.',
-      'Reports → Profit split: year total per person, actual (completed jobs) and projected (active).']] },
+      'To change the standard split or margin alert: Money → Reports → "Standard split and margin alert". The other owner gets a notice.',
+      'Money → Reports → Profit split: year total per person, actual (completed jobs) and projected (active).']] },
   { id: 'expenses', roles: ['owner', 'pm', 'worker'], icon: '🧾', screens: ['#/gastos', '#/obra'],
     es: ['Gastos y escanear tickets', [
       'Botón verde "Escanear": tome foto del ticket (o varios) o suba un PDF.',
-      'La app lee tienda, fecha, total e impuesto y lo pone en la obra correcta (por el código de obra, la dirección o el cliente).',
+      'La app lee tienda, fecha, total e impuesto y lo pone en la obra correcta (por el código de obra, la dirección o el cliente) y en su partida cuando es clara.',
+      'Si escanea desde adentro de una obra, se archiva en esa obra.',
+      'Dueño: si los tickets no se leen solos, falta la clave de lectura (Mi cuenta → Lectura automática de tickets).',
       'Si no está segura, queda "Por asignar" en Inicio: elija la obra con un toque.',
       'También puede escribir el gasto a mano en la pestaña Gastos de la obra.',
+      'Dueño o PM: en Gastos (y en la pestaña Gastos de cada obra) los botones Todo, Materiales, Subs y trabajadores, y Otros separan los gastos, cada uno con su total. En Subs y trabajadores sale cuánto lleva cada persona; en Materiales, cada tienda. "Descargar para Excel" baja solo lo que está viendo.',
       'PM: los gastos arriba de su límite quedan esperando la autorización de un dueño.']],
     en: ['Expenses and scanning receipts', [
       'Green "Scan" button: take a photo of the receipt (or several) or upload a PDF.',
-      'The app reads store, date, total and tax and files it to the right job (by job code, address or client).',
+      'The app reads store, date, total and tax and files it to the right job (by job code, address or client) and its line item when clear.',
+      'If you scan from inside a job, it is filed to that job.',
+      'Owner: if receipts are not read automatically, the reading key is missing (My account → Automatic receipt reading).',
       'If unsure, it stays "To assign" on Home: pick the job with one tap.',
       'You can also type the expense in the job\'s Expenses tab.',
+      'Owner or PM: in Expenses (and in each job\'s Expenses tab) the All, Materials, Subs and workers, and Other buttons split the expenses, each with its total. Subs and workers shows how much each person has; Materials, each store. "Download for Excel" downloads just what you are viewing.',
       'PM: expenses above your limit wait for an owner\'s approval.']] },
   { id: 'subs', roles: ['owner', 'pm'], icon: '👷', screens: ['#/obra', '#/cuentas'],
     es: ['Subs: estimados, invoices y pagos', [
       'Pestaña Subcontratistas de la obra: agregue al sub con lo acordado.',
       'El sub manda su estimado o invoice desde su app. Usted lo revisa en Inicio: aceptar el estimado lo suma a lo acordado; aprobar el invoice lo vuelve gasto.',
       '"Registrar pago": parcial o completo, con método (Zelle, cheque, depósito), fecha y número de confirmación.',
-      'Cuentas → estado de cuenta de cada sub: lo pagado y lo que se le debe (PDF para mandarle).']],
+      'Dinero → Cuentas → estado de cuenta de cada sub: lo pagado y lo que se le debe (PDF para mandarle).']],
     en: ['Subs: estimates, invoices and payments', [
       'Job Subcontractors tab: add the sub with the agreed amount.',
       'The sub sends their estimate or invoice from their app. Review it on Home: accepting the estimate adds to the agreed amount; approving the invoice makes it an expense.',
       '"Record payment": partial or full, with method (Zelle, check, deposit), date and confirmation number.',
-      'Accounts → each sub\'s statement: paid and owed (PDF to send them).']] },
+      'Money → Accounts → each sub\'s statement: paid and owed (PDF to send them).']] },
   { id: 'client', roles: ['owner', 'pm'], icon: '💵', screens: ['#/obra', '#/cuentas'],
     es: ['Cobrar al cliente', [
       'Botón "PDF para el cliente": estimado o contrato con change orders y pagos.',
       'El cliente firma desde su portal; queda la firma en el PDF.',
       'Change orders: se suman al contrato cuando se aprueban.',
-      'Pestaña Pagos del cliente: registre cada pago. Cuentas → estado de cuenta: pagado y lo que debe.']],
+      'Pestaña Pagos del cliente: registre cada pago. Dinero → Cuentas → estado de cuenta: pagado y lo que debe.']],
     en: ['Billing the client', [
       '"Client PDF" button: estimate or contract with change orders and payments.',
       'The client signs from their portal; the signature appears on the PDF.',
       'Change orders: added to the contract when approved.',
-      'Client payments tab: record each payment. Accounts → statement: paid and balance.']] },
+      'Client payments tab: record each payment. Money → Accounts → statement: paid and balance.']] },
   { id: 'calendar', roles: ['owner', 'pm'], icon: '📅', screens: ['#/calendario'],
     es: ['Calendario y cambios de fecha', [
+      'Arriba elija Día, Semana o Mes; las flechas avanzan o regresan. Toque un número de día para verlo completo. La app recuerda la última vista.',
       'Toque una tarea → "Reprogramar" y ponga la nueva fecha (o déjela vacía para que el sub proponga cuándo puede).',
       'Escriba el motivo: al sub le llega el aviso y responde si puede; al cliente se le avisa sin el motivo interno.',
       'Marque "Mover también las tareas siguientes" para recorrer todo el plan los mismos días.']],
     en: ['Calendar and date changes', [
-      'Drag a task to another day or use "Change date".',
+      'At the top choose Day, Week or Month; the arrows move forward or back. Tap a day number to see it in full. The app remembers your last view.',
+      'Tap a task → "Reschedule" and enter the new date (or leave it empty so the sub proposes when they can).',
       'Write the reason: the sub gets a notice and replies if they can; the client is notified without the internal reason.',
-      'Tasks that depend on another one move with it.']] },
+      'Check "Also move the following tasks" to shift the whole plan by the same days.']] },
   { id: 'cases', roles: ['owner', 'pm', 'worker', 'client'], icon: '⚠️', screens: ['#/casos', '#/obra', '#/'],
     es: ['Casos: problemas y preguntas con fotos', [
       'Sub: en su obra toque "⚠️ Reportar problema", explique y mande fotos. Solo lo ve la empresa.',
@@ -185,12 +197,12 @@ const HELP = [
       'Reportes: ganancia por tipo de proyecto, de dónde vienen los clientes, margen por oficio y reparto.',
       'Exportar CSV para el contador o QuickBooks.',
       'Proyecciones: ventas y ganancia de los próximos meses con estadística. Importe su historial para que sea confiable.',
-      'Cuentas: lo que les deben los clientes y lo que deben a subs.']],
+      'Dinero → Cuentas: lo que les deben los clientes y lo que deben a subs.']],
     en: ['Reports, forecasts and accounts', [
       'Reports: profit by project type, where clients come from, margin by trade and profit split.',
       'Export CSV for the accountant or QuickBooks.',
       'Forecasts: next months\' sales and profit using statistics. Import your history to make it reliable.',
-      'Accounts: what clients owe you and what you owe subs.']] },
+      'Money → Accounts: what clients owe you and what you owe subs.']] },
   { id: 'companies', roles: ['owner'], icon: '🏢', screens: ['#/', '#/equipo'],
     es: ['Dos empresas: Elevated Exteriors y JKL Homes', [
       'Toque el botón 🏢 arriba del menú para cambiar de empresa.',
@@ -204,26 +216,108 @@ const HELP = [
       'JKL quote form for your website: /cotizar.html?co=jkl']] },
   { id: 'import', roles: ['owner'], icon: '📥', screens: ['#/obras'],
     es: ['Importar sus libros de Excel', [
-      'En Google Sheets: Archivo → Descargar → Microsoft Excel (.xlsx).',
-      'Obras → "📥 Importar de Excel" y elija uno o varios archivos.',
+      'Obras → "📥 Importar de Excel" → "📁 Elegir de Google Drive": entre a la carpeta y marque uno o varios libros.',
+      'Sin Drive conectado: en Google Sheets, Archivo → Descargar → Microsoft Excel (.xlsx), y "Subir de mi computadora".',
       'Revise el resumen y los avisos. Marque los subs que ya están pagados completos.',
       'Toque "Importar esta obra". La misma obra no se importa dos veces.']],
     en: ['Import your Excel books', [
-      'In Google Sheets: File → Download → Microsoft Excel (.xlsx).',
-      'Jobs → "📥 Import from Excel" and pick one or several files.',
+      'Jobs → "📥 Import from Excel" → "📁 Choose from Google Drive": open the folder and check one or several workbooks.',
+      'Without Drive connected: in Google Sheets, File → Download → Microsoft Excel (.xlsx), then "Upload from my computer".',
       'Review the summary and warnings. Check the subs already paid in full.',
       'Tap "Import this job". The same job is never imported twice.']] },
   { id: 'agents', roles: ['owner'], icon: '🤖', screens: ['#/equipo', '#/agentes'],
     es: ['Agentes de AI (Grok y otros)', [
       'Equipo y accesos → 🤖 Agentes → "+ Agente": Operador de obras o Vendedor.',
       'Cree una llave (empiece con solo lectura) y cópiela: se muestra una sola vez.',
-      '"Instrucciones para el bot": copie el texto en Grok y ponga la llave como encabezado Authorization: Bearer.',
+      'Grok: al crear la llave, copie la "dirección para Grok". En grok.com/connectors → New Connector → Custom, péguela.',
+      'Otros bots: "Instrucciones para el bot" y la llave como encabezado Authorization: Bearer.',
       'Lo que mueve dinero queda esperando a un dueño. Quite la llave o apague al agente cuando quiera.']],
     en: ['AI agents (Grok and others)', [
       'Team and access → 🤖 Agents → "+ Agent": Job operator or Salesperson.',
       'Create a key (start read-only) and copy it: it is shown only once.',
-      '"Instructions for the bot": paste the text into Grok and set the key as the Authorization: Bearer header.',
+      'Grok: when you create the key, copy the "address for Grok". In grok.com/connectors → New Connector → Custom, paste it.',
+      'Other bots: "Instructions for the bot" and the key as the Authorization: Bearer header.',
       'Anything that moves money waits for an owner. Revoke the key or turn the agent off anytime.']] },
+  { id: 'proposal', roles: ['owner'], icon: '📝', screens: ['#/obra', '#/ventas'],
+    es: ['Propuesta al cliente y cobros por etapa', [
+      'En la obra (o desde Ventas → "Armar propuesta"): pestaña "Propuesta y cobros".',
+      'Agregue cada partida con su precio y su costo estimado. La app le enseña el margen antes de mandar; el cliente nunca ve los costos.',
+      'Escriba la descripción, las condiciones y hasta cuándo vale. Arme el calendario de pagos: cada etapa es un % y se cumple al firmar, al terminar una tarea o cuando usted la marque.',
+      '"Mandar al cliente": se manda un enlace por texto, WhatsApp o correo. El cliente la ve en su teléfono, baja el PDF y firma con el dedo. No necesita cuenta.',
+      'Al firmar, la obra pasa a "En obra" y le llega un aviso. Cuando una etapa se cumple, le avisa "toca cobrar".',
+      '"Facturar" saca el invoice en PDF y lo manda con el mismo enlace. Los pagos que registre se aplican solos a las etapas; lo vencido sale en Inicio.']],
+    en: ['Client proposal and billing by stage', [
+      'In the job (or from Sales → "Build proposal"): "Proposal and billing" tab.',
+      'Add each line item with its price and estimated cost. The app shows the margin before sending; the client never sees costs.',
+      'Write the description, terms and valid-until date. Build the payment schedule: each stage is a % and is reached at signing, when a task is done, or when you mark it.',
+      '"Send to client": a link goes out by text, WhatsApp or email. The client views it on their phone, downloads the PDF and signs with a finger. No account needed.',
+      'When signed, the job becomes "In progress" and you get a notice. When a stage is reached, you get "time to bill".',
+      '"Invoice" creates the PDF invoice and sends it with the same link. Payments you record are applied to the stages automatically; overdue shows on Home.']] },
+  { id: 'papers', roles: ['owner'], icon: '📁', screens: ['#/dinero', '#/papeles'],
+    es: ['Papeles de los subs: W-9, seguro, lien waivers y 1099', [
+      'Dinero → "Subs: papeles y 1099". Ahí sale cada sub con lo que le falta.',
+      '"Abrir" en un sub: suba su W-9 (foto o PDF), diga qué tipo de empresa es, y suba su certificado de seguro con la fecha en que vence.',
+      'La app le avisa en Inicio 30 días antes de que venza el seguro, y cuando ya venció.',
+      'Lien waivers: por cada pago que le hizo al sub, suba el waiver firmado. Use las formas oficiales de Texas tal cual (hay enlace abajo de la tabla); la app no las redacta.',
+      '1099: la app suma lo pagado a cada sub en el año y marca a quién hay que mandarle 1099-NEC (no aplica a corporaciones). "Reporte 1099 (CSV)" baja la lista para su contador. Para 2026 el mínimo es $2,000; confírmelo con su contador.']],
+    en: ['Sub paperwork: W-9, insurance, lien waivers and 1099', [
+      'Money → "Subs: paperwork and 1099". Each sub shows what is missing.',
+      '"Open" on a sub: upload their W-9 (photo or PDF), set the entity type, and upload their insurance certificate with its expiration date.',
+      'Home warns you 30 days before insurance expires, and once it has expired.',
+      'Lien waivers: for each payment to the sub, upload the signed waiver. Use the official Texas forms as-is (link below the table); the app does not draft them.',
+      '1099: the app totals what each sub was paid in the year and flags who needs a 1099-NEC (corporations are exempt). "1099 report (CSV)" downloads the list for your accountant. For 2026 the threshold is $2,000; confirm with your accountant.']] },
+  { id: 'marketing', roles: ['owner'], icon: '📣', screens: ['#/dinero', '#/publicidad'],
+    es: ['Publicidad: cuánto cuesta cada cliente ganado', [
+      'Dinero → "Publicidad".',
+      '"+ Gasto en publicidad": anote cada mes cuánto gastó en cada canal (Google, Facebook/Instagram, página web, etc.).',
+      'La app lo cruza con los prospectos, estimados y ventas de ese canal, según el "cómo nos conoció" de cada prospecto en Ventas.',
+      'Mire "costo por venta" y "retorno": 3× quiere decir que cada $1 trajo $3 en ventas. Así sabe dónde poner el dinero.']],
+    en: ['Marketing: cost per client won', [
+      'Money → "Marketing".',
+      '"+ Marketing spend": each month, record what you spent on each channel (Google, Facebook/Instagram, website, etc.).',
+      'The app matches it with leads, estimates and sales from that channel, using each lead\'s "how did you hear about us" in Sales.',
+      'Watch "cost per sale" and "return": 3× means each $1 brought $3 in sales. That tells you where to put the money.']] },
+  { id: 'closeout', roles: ['owner', 'pm'], icon: '🏁', screens: ['#/obra'],
+    es: ['Entrega de la obra firmada por el cliente', [
+      'En la obra, pestaña Tareas → tarjeta "Entrega de la obra".',
+      'Anote los pendientes de la última revisión (retoques, limpieza) y márquelos cuando estén hechos.',
+      'Con todo hecho, "Pedir firma de entrega" manda un enlace al cliente. Él revisa la lista y firma con el dedo.',
+      'Al firmar, la obra pasa a "Terminada", empieza la garantía y la app le pide la reseña al cliente.']],
+    en: ['Job handover signed by the client', [
+      'In the job, Tasks tab → "Job handover" card.',
+      'List the items from the final walkthrough (touch-ups, cleanup) and check them off when done.',
+      'When everything is done, "Request handover signature" sends the client a link. They review the list and sign with a finger.',
+      'Once signed, the job becomes "Finished", the warranty starts and the app asks the client for a review.']] },
+  { id: 'hourly', roles: ['owner'], icon: '⏱️', screens: ['#/horas', '#/obra', '#/equipo'],
+    es: ['Trabajadores por hora y nómina', [
+      'Equipo y accesos → al crear un Trabajador, elija "Por hora" y su pago por hora. Los subs con precio por trabajo van "Como sub".',
+      'El trabajador marca entrada y salida en su teléfono. Si no lo hizo: Horas y nómina → "+ Anotar horas".',
+      'Las horas se suman solas como gasto de mano de obra en la obra. Lo que pase de 40 h en la semana se paga a 1.5× (se puede cambiar en Nómina → Cambiar).',
+      'Nómina de la semana: cuánto se le debe a cada uno. "Marcar pagado" con la forma de pago; esa semana queda cerrada.',
+      'Reporte: cuánto se ha gastado por trabajador o por obra, en las fechas que elija.',
+      'En cada obra, pestaña Subcontratistas → "Trabajadores por hora": horas y costo de cada persona en esa obra.']],
+    en: ['Hourly workers and payroll', [
+      'Team and access → when creating a Worker, choose "Hourly" and their hourly pay. Subs paid per job go "As a sub".',
+      'The worker clocks in and out on their phone. If they didn\'t: Hours and payroll → "+ Log hours".',
+      'Hours are added automatically as labor cost on the job. Anything over 40 h a week is paid at 1.5× (change it in Payroll → Change).',
+      'Weekly payroll: what each person is owed. "Mark paid" with the payment method; that week is closed.',
+      'Report: how much was spent per worker or per job, for the dates you choose.',
+      'On each job, Subcontractors tab → "Hourly workers": hours and cost of each person on that job.']] },
+  { id: 'texts', roles: ['owner', 'pm'], icon: '💬', screens: ['#/textos', '#/obra'],
+    es: ['Mensajes de texto con subs y clientes', [
+      'Menú → Textos. "+ Texto nuevo", elija a la persona y escriba. Sale del número de la empresa.',
+      'Las respuestas llegan a Textos y le avisa la app. Toque la conversación para contestar.',
+      'En los avisos de cambio de fecha y novedades aparece "💬 Texto desde la app".',
+      'PM: solo puede textear a la gente de sus obras.',
+      'Nunca ponga precios ni costos internos en un texto.',
+      'Dueño: para activarlos, vea Mi cuenta → Mensajes de texto.']],
+    en: ['Text messages with subs and clients', [
+      'Menu → Texts. "+ New text", pick the person and write. It goes out from the company number.',
+      'Replies arrive in Texts and the app notifies you. Tap the conversation to answer.',
+      'Date-change and update notices show "💬 Text from the app".',
+      'PM: you can only text people on your jobs.',
+      'Never put prices or internal costs in a text.',
+      'Owner: to turn them on, see My account → Text messages.']] },
   { id: 'backup', roles: ['owner'], icon: '💾', screens: ['#/cuenta'],
     es: ['Respaldos', [
       'La app guarda una copia cada día (las últimas 14).',
@@ -235,12 +329,12 @@ const HELP = [
   // ---------- project manager ----------
   { id: 'pmday', roles: ['pm'], icon: '📝', screens: ['#/'],
     es: ['Su día como project manager', [
-      'Revise Hoy: qué sigue en cada obra y avise al siguiente sub.',
+      'Revise Inicio → Hoy en las obras: qué sigue en cada obra y avise al siguiente sub.',
       'Registre gastos, fotos, reportes diarios y casos de sus obras.',
       'Pagos a subs, cambios de precio y gastos arriba de su límite quedan como solicitud que autoriza un dueño.',
       'Al final del día escriba su nota en Inicio (qué hizo, problemas, qué sigue). Los dueños la ven en su reporte.']],
     en: ['Your day as project manager', [
-      'Check Today: what\'s next on each job and notify the next sub.',
+      'Check Home → Today on jobs: what\'s next on each job and notify the next sub.',
       'Record expenses, photos, daily reports and cases for your jobs.',
       'Sub payments, price changes and expenses over your limit become requests an owner approves.',
       'At the end of the day write your note on Home (what you did, problems, what\'s next). Owners see it in their report.']] },
@@ -309,6 +403,39 @@ function helpFor(me) {
 const HELP_ROLE = { owner: ['Dueño', 'Owner'], pm: ['Project manager', 'Project manager'], sales: ['Vendedor', 'Salesperson'], worker: ['Sub / trabajador', 'Sub / worker'], client: ['Cliente', 'Client'] };
 const hx = (es, en) => (LANG === 'en' ? en : es);
 
+// ===== Videos de ayuda: cada persona los ve en su idioma (español o inglés) =====
+const VIDEOS = [
+  { id: 'instalar', min: '2 min', es: 'Cómo instalar y entrar', en: 'How to install and sign in', roles: ['owner', 'pm', 'sales', 'worker', 'client'] },
+  { id: 'duenos', min: '5 min', es: 'Para dueños y administradores', en: 'For owners and admins', roles: ['owner'] },
+  { id: 'pm', min: '2 min', es: 'Para project managers', en: 'For project managers', roles: ['owner', 'pm'] },
+  { id: 'subs', min: '2 min', es: 'Para subs y trabajadores', en: 'For subs and workers', roles: ['owner', 'worker'] },
+];
+const vlang = () => (LANG === 'en' ? 'en' : 'es');
+const vsrc = (id, lg, ext) => `/tutoriales/${lg}/${id}.${ext}`;
+function videoDialog(v, lg = vlang()) {
+  const d = document.createElement('dialog'); d.className = 'vdlg';
+  const share = ME && ME.role === 'owner', other = lg === 'en' ? 'es' : 'en';
+  const url = location.origin + vsrc(v.id, lg, 'mp4');
+  d.innerHTML = `<div class="row between"><b>🎬 ${esc(v[lg])}</b><button class="sm link" data-x aria-label="${hx('Cerrar', 'Close')}">✕</button></div>
+    <video controls autoplay playsinline preload="metadata" poster="${vsrc(v.id, lg, 'jpg')}" src="${vsrc(v.id, lg, 'mp4')}"></video>
+    <p class="small muted">${hx('Sin sonido: lea los pasos en pantalla. Puede pausar y regresar. En el teléfono, voltéelo o toque pantalla completa para leer mejor.', 'No sound: read the steps on screen. You can pause and go back. On a phone, turn it sideways or tap full screen to read better.')}</p>
+    <p class="row wrap"><button class="btn sm" data-other>${other === 'en' ? hx('Ver en inglés', 'Watch in English') : hx('Ver en español', 'Watch in Spanish')}</button>
+    ${share ? `<a class="btn sm" href="https://wa.me/?text=${encodeURIComponent((lg === 'en' ? 'How to use the app: ' : 'Video de cómo usar la app: ') + url)}" target="_blank" rel="noopener">${hx('Mandar por WhatsApp', 'Send by WhatsApp')}</a>
+      <button class="btn sm" data-copy>${hx('Copiar enlace del video', 'Copy video link')}</button>` : ''}</p>`;
+  document.body.appendChild(d); d.showModal();
+  const close = () => { const vid = $('video', d); if (vid) vid.pause(); d.close(); d.remove(); };
+  $('[data-x]', d).onclick = close; d.addEventListener('cancel', e => { e.preventDefault(); close(); });
+  $('[data-other]', d).onclick = () => { close(); videoDialog(v, other); };
+  const c = $('[data-copy]', d); if (c) c.onclick = async () => { try { await navigator.clipboard.writeText(url); toast(hx('Enlace copiado', 'Link copied')); } catch { /* */ } };
+}
+function videosCard(role) {
+  const list = VIDEOS.filter(v => v.roles.includes(role)), lg = vlang();
+  return `<div class="card"><h2 style="margin-top:0">🎬 ${hx('Videos', 'Videos')}</h2><p class="small muted">${hx('Tutoriales paso a paso con la app de verdad.', 'Step-by-step tutorials with the real app.')}</p>
+    <div class="vgrid">${list.map(v => `<button type="button" class="vtile" data-video="${v.id}"><img src="${vsrc(v.id, lg, 'jpg')}" alt="" loading="lazy"><span class="vplay">▶</span>
+      <b>${esc(v[lg])}</b><span class="small muted">${v.min}</span></button>`).join('')}</div></div>`;
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-video]'); if (!b) return; e.preventDefault(); const v = VIDEOS.find(x => x.id === b.dataset.video); if (v) videoDialog(v); });
+
 async function viewHelp(app, from) {
   // Primero lo que es solo para su papel; los pasos que son para otro papel no se muestran.
   const all = helpFor(ME).map((h, i) => ({ h, i })).sort((a, b) => (ME.role !== 'owner' ? a.h.roles.length - b.h.roles.length : 0) || a.i - b.i).map(x => x.h);
@@ -322,6 +449,8 @@ async function viewHelp(app, from) {
   const role = HELP_ROLE[ME.role] || ['', ''];
   app.innerHTML = `<div class="row between wrap"><h1 style="margin:0">❓ ${hx('Ayuda', 'Help')}</h1><span class="badge b-en_progreso">${esc(hx(role[0], role[1]))}</span></div>
     <p class="muted small">${hx('Cómo se usa la app para su papel. Toque un tema para ver los pasos.', 'How to use the app for your role. Tap a topic to see the steps.')}</p>
+    ${videosCard(ME.role)}
+    <h2 class="help-h">💬 ${hx('Preguntas', 'Questions')}</h2>
     <div class="field"><input id="hq" type="search" placeholder="${hx('Buscar: tickets, pagos, contraseña, fotos…', 'Search: receipts, payments, password, photos…')}" aria-label="${hx('Buscar', 'Search')}"></div>
     ${here.length ? `<h2 class="help-h">📍 ${hx('Sobre la pantalla donde estaba', 'About the screen you were on')}</h2>${here.map((h, i) => card(h, i < 2)).join('')}<h2 class="help-h">${hx('Todos los temas', 'All topics')}</h2>` : ''}
     <div id="hl">${all.filter(h => !here.includes(h)).map(h => card(h, false)).join('')}</div>

@@ -1,7 +1,7 @@
 'use strict';
 // Service worker: guarda la "cáscara" de la app en el teléfono para que abra rápido
 // y muestre un aviso si no hay internet. NUNCA guarda datos de la empresa (/api, /files).
-const VERSION = 'ee-2.2.2';
+const VERSION = 'ee-2.4.0';
 const SHELL = ['/', '/index.html', '/app.css', '/app.js', '/app2.js', '/help.js', '/i18n.js', '/manifest.webmanifest', '/fonts/dm-sans-latin.woff2',
   '/brand/ee-logo.png', '/brand/icon-192.png', '/brand/icon-512.png', '/brand/apple-touch-icon.png', '/brand/favicon-32.png', '/offline.html'];
 
@@ -15,6 +15,7 @@ self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== location.origin) return;
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/files/')) return; // datos: siempre del servidor
+  if (url.pathname.startsWith('/tutoriales/')) return; // videos de ayuda: pesados, no se guardan en el teléfono
   if (req.mode === 'navigate') {
     e.respondWith(fetch(req).catch(() => caches.match('/index.html').then(r => r || caches.match('/offline.html'))));
     return;

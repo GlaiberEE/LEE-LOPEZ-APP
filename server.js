@@ -12,8 +12,18 @@ const CO = require('./lib/company');
 const AG = require('./lib/agents');
 
 const PUBLIC = path.join(__dirname, 'public');
+// Huella de la interfaz (versión + contenido de los archivos), calculada una vez al arrancar.
+const APP_STAMP = (() => {
+  const h = require('node:crypto').createHash('sha256');
+  const walk = d => fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)).forEach(e => {
+    const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else if (/\.(js|css|html|webmanifest)$/.test(e.name)) h.update(e.name).update(fs.readFileSync(f));
+  });
+  walk(PUBLIC);
+  return require('./package.json').version + '-' + h.digest('hex').slice(0, 8);
+})();
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8' };
+  '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8',
+  '.mp4': 'video/mp4', '.jpg': 'image/jpeg', '.vtt': 'text/vtt; charset=utf-8' };
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
@@ -36,14 +46,14 @@ function readBody(req, limit = 12 * 1024 * 1024) {
   });
 }
 
-function createServer({ dataDir, secureCookies = false, scanExtractor, planAI } = {}) {
+function createServer({ dataDir, secureCookies = false, scanExtractor, planAI, smsSend, driveFetch } = {}) {
   // Una base de datos por empresa (Elevated Exteriors, JKL Homes…). Nada se mezcla entre empresas.
   let list = CO.loadConfig(dataDir);
   const companies = new Map();
   const mount = c => {
     const cdb = open(CO.dirFor(dataDir, list, c.key));
     CO.stamp(cdb, c, c.key === list[0].key);
-    companies.set(c.key, { ...c, db: cdb, table: routes(cdb, { scanExtractor, planAI }) });
+    companies.set(c.key, { ...c, db: cdb, table: routes(cdb, { scanExtractor, planAI, smsSend, driveFetch }) });
   };
   list.forEach(mount);
   const first = list[0].key;
@@ -64,6 +74,27 @@ function createServer({ dataDir, secureCookies = false, scanExtractor, planAI } 
     try {
       const url = new URL(req.url, 'http://x');
       const cookies = parseCookies(req.headers.cookie);
+      // --- textos que llegan de Twilio (firmados) ---
+      const smsHook = /^\/sms\/twilio\/([a-z0-9-]+)$/.exec(url.pathname);
+      if (smsHook) {
+        const X = companies.get(smsHook[1]);
+        if (!X || req.method !== 'POST') return send(404, 'No encontrado', { 'Content-Type': 'text/plain; charset=utf-8' });
+        const SMS = require('./lib/sms');
+        const params = Object.fromEntries(new URLSearchParams(await readBody(req, 64 * 1024)));
+        const c = SMS.config(X.db);
+        const proto = process.env.TRUST_PROXY === '1' ? String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() : (secureCookies ? 'https' : 'http');
+        const full = (process.env.PUBLIC_URL ? process.env.PUBLIC_URL.replace(/\/$/, '') : `${proto}://${req.headers.host}`) + req.url;
+        if (!c.token || !SMS.validSignature(c.token, full, params, req.headers['x-twilio-signature'])) return send(403, 'Firma inválida', { 'Content-Type': 'text/plain; charset=utf-8' });
+        SMS.inbound(X.db, params);
+        return send(200, '<?xml version="1.0" encoding="UTF-8"?><Response></Response>', { 'Content-Type': 'text/xml; charset=utf-8' });
+      }
+      if (url.pathname.startsWith('/.well-known/oauth')) return json(404, { error: 'No encontrado' });
+      // --- conector MCP para agentes de AI (Grok y otros) ---
+      const mcpM = /^\/mcp(?:\/([A-Za-z0-9_-]+))?\/?$/.exec(url.pathname);
+      if (mcpM) {
+        const hk = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization || '');
+        return await require('./lib/mcp').handle(req, res, { key: mcpM[1] || (hk && hk[1]) || '', port: req.socket.localPort, readBody });
+      }
       // Empresa de esta petición: ?co= (páginas públicas), si no la que eligió en este navegador, si no la primera.
       // Agentes (bots de AI): entran con una llave "Authorization: Bearer eek_<empresa>_…". La llave decide la empresa.
       const bearer = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization || '');
@@ -193,7 +224,19 @@ function createServer({ dataDir, secureCookies = false, scanExtractor, planAI } 
       const embed = path.basename(file) === 'cotizar.html' ? { 'X-Frame-Options': '', 'Content-Security-Policy': SECURITY_HEADERS['Content-Security-Policy'].replace("frame-ancestors 'none'", 'frame-ancestors *') } : {};
       const hdr = { ...SECURITY_HEADERS, ...embed, 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' };
       if (!hdr['X-Frame-Options']) delete hdr['X-Frame-Options'];
+      // Videos de ayuda: se mandan por pedazos (el iPhone no los reproduce si no) y sin cargarlos enteros en memoria.
+      if (path.extname(file) === '.mp4') {
+        const size = fs.statSync(file).size, m = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+        hdr['Accept-Ranges'] = 'bytes'; hdr['Cache-Control'] = 'public, max-age=86400';
+        if (!m) { res.writeHead(200, { ...hdr, 'Content-Length': size }); return fs.createReadStream(file).pipe(res); }
+        let a = m[1] === '' ? Math.max(0, size - Number(m[2] || 0)) : Number(m[1]), z = m[1] !== '' && m[2] !== '' ? Math.min(Number(m[2]), size - 1) : size - 1;
+        if (a > z || a >= size) { res.writeHead(416, { ...hdr, 'Content-Range': `bytes */${size}` }); return res.end(); }
+        res.writeHead(206, { ...hdr, 'Content-Range': `bytes ${a}-${z}/${size}`, 'Content-Length': z - a + 1 });
+        return fs.createReadStream(file, { start: a, end: z }).pipe(res);
+      }
       res.writeHead(200, hdr);
+      // El service worker lleva una huella de los archivos de la app: cualquier cambio publicado actualiza los teléfonos.
+      if (p === '/sw.js') return res.end(fs.readFileSync(file, 'utf8').replace(/const VERSION = '[^']*';/, `const VERSION = 'ee-${APP_STAMP}';`));
       return res.end(fs.readFileSync(file));
     } catch (e) {
       if (e instanceof HttpError) return json(e.status, { ...(e.extra || {}), error: e.message });
@@ -223,7 +266,7 @@ if (require.main === module) {
   // Avisos automáticos (resumen de PMs a las 7 am, recordatorio de nota a las 5 pm).
   const pmTick = () => server.dbs().forEach(d => require('./lib/pmreport').tick(d));
   setTimeout(pmTick, 60 * 1000).unref(); setInterval(pmTick, 30 * 60 * 1000).unref();
-  const salesTick = () => server.dbs().forEach(d => require('./lib/sales').tick(d));
+  const salesTick = () => server.dbs().forEach(d => { require('./lib/sales').tick(d); try { require('./lib/billing').check(d); } catch (e) { console.error('[cobros]', e.message); } });
   setInterval(salesTick, 5 * 60 * 1000).unref();
   server.listen(port, host, () => {
     console.log('');

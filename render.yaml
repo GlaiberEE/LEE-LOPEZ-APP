@@ -17,3 +17,6 @@ services:
         value: "1"
       - key: SETUP_CODE
         generateValue: true
+      # Se agregan a mano en Render → Environment cuando las tenga (no van aquí porque son secretas):
+      #   ANTHROPIC_API_KEY o XAI_API_KEY  → lectura automática de tickets
+      #   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM  → mensajes de texto

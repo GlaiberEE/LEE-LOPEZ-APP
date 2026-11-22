@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Propuesta</title>
+<link rel="icon" href="/brand/favicon-32.png">
+<style>
+  @font-face { font-family: 'DM Sans'; src: url('/fonts/dm-sans-latin.woff2') format('woff2'); font-weight: 100 1000; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'DM Sans', system-ui, sans-serif; background: #f4f4ef; color: #1d1d1d; }
+  header { background: #1b1b1b; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  header img { height: 40px; filter: invert(1); }
+  header b.co { color: #fff; font-size: 1.2rem; }
+  header button { background: #2c2c2c; color: #c5e05a; border: 0; border-radius: 8px; padding: .45rem .7rem; font-weight: 700; cursor: pointer; }
+  main { max-width: 760px; margin: 0 auto; padding: 1.25rem; }
+  h1 { color: #02175d; margin: .3rem 0 .2rem; font-size: 1.7rem; }
+  h2 { color: #02175d; font-size: 1.15rem; margin: 0 0 .6rem; }
+  .muted { color: #666; } .small { font-size: .88rem; }
+  .card { background: #fff; border-radius: 14px; padding: 1.1rem 1.2rem; box-shadow: 0 6px 24px rgba(0,0,0,.05); margin: 1rem 0; }
+  .row { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; border-bottom: 1px solid #eee; }
+  .row:last-child { border-bottom: 0; } .row .amt { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .total { display: flex; justify-content: space-between; background: #c5e05a; border-radius: 10px; padding: .8rem 1rem; font-weight: 800; font-size: 1.2rem; margin-top: .6rem; }
+  label { font-weight: 700; font-size: .92rem; display: block; margin: .6rem 0 .3rem; }
+  input[type=text] { width: 100%; font: inherit; padding: .75rem; border: 1px solid #cfcfc8; border-radius: 10px; min-height: 48px; }
+  canvas { width: 100%; height: 170px; border: 2px dashed #bbb; border-radius: 12px; background: #fff; touch-action: none; display: block; }
+  .chk { display: flex; gap: .6rem; align-items: flex-start; margin: .8rem 0; font-weight: 400; }
+  .chk input { width: 22px; height: 22px; margin-top: 2px; }
+  button.send { background: #c5e05a; color: #111; border: 0; border-radius: 12px; padding: 1rem; font-size: 1.1rem; font-weight: 800; cursor: pointer; min-height: 54px; width: 100%; }
+  button.send:disabled { opacity: .6; } button.link { background: none; border: 0; color: #02175d; text-decoration: underline; cursor: pointer; font: inherit; padding: 0; }
+  a.btn { display: inline-block; background: #fff; border: 1px solid #cfcfc8; border-radius: 10px; padding: .6rem .9rem; color: #1d1d1d; text-decoration: none; font-weight: 600; }
+  .err { color: #b00; font-weight: 600; min-height: 1.2em; }
+  .ok { background: #e7f4e4; border-radius: 12px; padding: 1rem; font-weight: 600; }
+  .badge { display: inline-block; padding: .15rem .55rem; border-radius: 99px; font-size: .78rem; font-weight: 700; background: #eee; }
+  .b-pagado { background: #e5f4e4; color: #166534; } .b-vencido { background: #fbebeb; color: #991b1b; } .b-facturado { background: #f9eeda; color: #8a5a00; }
+</style>
+</head>
+<body>
+<header><span id="brand"><img src="/brand/ee-logo.png" alt=""></span><button type="button" id="lang">EN</button></header>
+<main id="m"><p class="muted">…</p></main>
+<script src="/propuesta.js"></script>
+</body>
+</html>

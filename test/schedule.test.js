@@ -162,7 +162,7 @@ test('migración: una base de la versión anterior se actualiza sin perder datos
   const { open } = require('../lib/db');
   const db = open(d2);
   assert.equal(db.prepare('SELECT title, planned_end FROM tasks').get().title, 'vieja');
-  assert.equal(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value, '15');
+  assert.equal(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value, '22');
   db.close(); fs.rmSync(d2, { recursive: true, force: true });
 });
 

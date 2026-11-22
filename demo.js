@@ -87,6 +87,43 @@ tx(db, () => {
   db.prepare('UPDATE users SET rate_cents=2800 WHERE id=?').run(pedro);
   db.prepare("INSERT INTO time_entries(user_id,job_id,in_at,in_lat,in_lng,in_dist,rate_cents) VALUES(?,?,datetime('now','-3 hours'),33.0641,-97.1076,40,2800)").run(pedro, b);
   db.prepare('UPDATE jobs SET lat=33.0640, lng=-97.1075 WHERE id=?').run(b);
+  // Trabajador por hora con dos semanas de horas (una con tiempo extra, otra ya pagada).
+  db.prepare("UPDATE users SET pay_type='hora' WHERE id=?").run(pedro);
+  const juan = u('Juan (demo, por hora)', 'juan', 'worker', 'Ayudante general', '(555) 010-0011');
+  db.prepare("UPDATE users SET pay_type='hora', rate_cents=2200 WHERE id=?").run(juan);
+  db.prepare("UPDATE users SET pay_type='sub' WHERE id=?").run(luis);
+  const LAB = require('./lib/labor');
+  const utcAt = (d, h) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCHours(h + 6); return x.toISOString().replace('T', ' ').slice(0, 19); };
+  const work = (uid, jobId, d, h1, h2, rate) => {
+    const inAt = utcAt(d, h1), outAt = utcAt(d, h2), min = (h2 - h1) * 60;
+    const exp = Number(db.prepare("INSERT INTO expenses(job_id,date,category,description,bought_by,amount_cents,created_by) VALUES(?,?,'mano_obra',?,?,?,?)")
+      .run(jobId, d, `Horas: ${uid === juan ? 'Juan (demo, por hora)' : 'Pedro (demo)'} (${(min / 60).toFixed(2)} h)`, '', Math.round(min / 60 * rate), uid).lastInsertRowid);
+    db.prepare('INSERT INTO time_entries(user_id,job_id,in_at,out_at,minutes,rate_cents,expense_id,note) VALUES(?,?,?,?,?,?,?,?)').run(uid, jobId, inAt, outAt, min, rate, exp, '');
+  };
+  const wk0 = LAB.settings(db) && (() => { const t = day(0); const dow = new Date(t + 'T12:00:00Z').getUTCDay(); return day(-((dow + 6) % 7)); })();
+  const off = (base, n) => { const x = new Date(base + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+  const last = off(wk0, -7), prev = off(wk0, -14);
+  [0, 1, 2, 3, 4].forEach(i => work(juan, i < 3 ? a : b, off(last, i), 7, 16, 2200));
+  work(juan, b, off(last, 5), 8, 14, 2200);   // sábado: 6 h más (5 × 9 h + 6 h = 51 h → 11 h de tiempo extra)
+  [0, 1, 2, 3].forEach(i => work(pedro, a, off(last, i), 7, 15, 2800));
+  [0, 1, 2, 3, 4].forEach(i => work(juan, a, off(prev, i), 7, 15, 2200));
+  [last, prev].forEach(w => { LAB.syncOT(db, juan, w); LAB.syncOT(db, pedro, w); });
+  db.prepare("INSERT INTO payroll(user_id,week_start,minutes,ot_minutes,total_cents,method,note,paid_by) VALUES(?,?,?,?,?,?,?,?)").run(juan, prev, 40 * 60, 0, 40 * 2200, 'Zelle', '', owner);
+  if (day(0) !== wk0) work(juan, a, wk0, 7, 15, 2200);
+  // Publicidad de ejemplo (últimos 3 meses) y papeles de un sub.
+  for (let k = 0; k < 3; k++) { const m = new Date(day(0) + 'T12:00:00Z'); m.setUTCMonth(m.getUTCMonth() - k); const ym = m.toISOString().slice(0, 7);
+    db.prepare('INSERT INTO marketing_spend(month,channel,amount_cents,note) VALUES(?,?,?,?)').run(ym, 'Google', 40000, 'Google Ads');
+    db.prepare('INSERT INTO marketing_spend(month,channel,amount_cents,note) VALUES(?,?,?,?)').run(ym, 'Facebook / Instagram', 10000, ''); }
+  // Historial de ejemplo: así se ve lo que queda registrado.
+  const jkId = db.prepare("SELECT id FROM users WHERE username='jack'").get().id;
+  [[owner, 'crear', 'pago del cliente', 2, 'Pago del cliente: Ejemplo Rodríguez (demo) — cheque', 1200000, '', -3],
+   [mario, 'solicitud', 'gasto', 2, 'Mario pide registrar compra de $820 en Home Depot (arriba de su límite)', 82000, 'Faltó madera para la estructura', -2],
+   [jkId, 'aprobar', 'gasto', 2, 'Aprobó la compra de $820 en Home Depot de Mario', 82000, 'OK', -2],
+   [owner, 'editar', 'pago a sub', 2, 'Pago parcial a Pedro (demo): de $900 a $1,000', 100000, 'Se le pagó el material también', -1],
+   [jkId, 'solicitud', 'change order', 1, 'Cambio de $1,500 en el change order de Sample Family: necesita la aprobación del otro dueño', 150000, 'Cliente pidió stain oscuro', 0]]
+    .forEach(([u, act, ent, job, sum, amt, why, d]) => db.prepare("INSERT INTO audit_log(at,user_id,action,entity,job_id,summary,amount_cents,reason) VALUES(datetime(?,'+15 hours'),?,?,?,?,?,?,?)").run(day(d), u, act, ent, job, sum, amt, why));
+  const soon = day(18);
+  db.prepare("INSERT INTO sub_papers(key,name,tax_class,w9_file,w9_date,coi_expires,coi_carrier) VALUES(?,?,?,?,?,?,?)").run('u' + pedro, 'Pedro (demo)', 'individual', '', '', soon, 'Texas Mutual');
   db.prepare(`INSERT INTO jobs(client_name,client_phone,client_email,address,project_type,description,status,lead_source,follow_up_date,lead_new)
     VALUES('Ana Web (demo)','(000) 000-0009','ana@example.com','300 Ejemplo Rd, Argyle, TX','outdoor_kitchen','Quiero una cocina exterior con pérgola.\nPresupuesto: $25k–$50k','prospecto','Web',?,1)`).run(day(0));
   db.prepare(`INSERT INTO jobs(client_name,client_phone,address,project_type,description,status,quoted_cents,start_date,completed_date,lead_source)
@@ -209,6 +246,17 @@ tx(db, () => {
   db.prepare("INSERT INTO job_lessons(job_id,line_code,issue,cause,cost_cents,lesson,avoid_repeat) VALUES(?,?,?,?,?,?,?)").run(done, 'OK-01', 'La cubierta se midió antes de terminar la piedra', 'Prisa por el template', 65000, 'Hacer el template hasta que la piedra esté terminada', 'EVITAR');
   db.prepare("UPDATE jobs SET review_profitable='YES', review_stress='2', review_worked='Cuadrilla de masonería y comunicación diaria con el cliente', review_didnt='Template de la cubierta' WHERE id=?").run(done);
   db.prepare('INSERT INTO job_links(job_id,label,url,note) VALUES(?,?,?,?)').run(a, 'Planos', 'https://drive.google.com/', 'Planos del permiso (ejemplo)');
+  // Textos de ejemplo (como si ya estuvieran conectados con Twilio).
+  const ph = id => { const d = String((db.prepare('SELECT phone FROM users WHERE id=?').get(id) || {}).phone || '').replace(/\D/g, ''); return d.length === 10 ? '+1' + d : '+' + d; };
+  const tx = (phone, dir, body, uid, job, ago, by = null, read = true) => db.prepare("INSERT INTO sms(phone,direction,body,user_id,job_id,status,created_by,read_at,created_at) VALUES(?,?,?,?,?,?,?,?,datetime('now',?))")
+    .run(phone, dir, body, uid, job, dir === 'out' ? 'delivered' : 'recibido', by, read ? "x" : '', `-${ago} minutes`);
+  const pp = ph(pedro);
+  tx(pp, 'out', 'Elevated Exteriors: Pedro, mañana a las 8 empezamos los postes en Sample Family. ¿Puede llegar con su cuadrilla?\nResponda STOP para no recibir más textos.', pedro, a, 190, owner);
+  tx(pp, 'in', 'Sí, ahí estaremos a las 8 con 3 personas', pedro, a, 172);
+  tx(pp, 'out', 'Elevated Exteriors: Perfecto, gracias. El concreto llega a las 9.', pedro, a, 165, owner);
+  tx(pp, 'in', 'Ok. Necesito que alguien abra la puerta del patio', pedro, a, 12, null, false);
+  tx('+10000000002', 'out', 'Elevated Exteriors: Hola, mañana instalamos la cubierta de granito. Llegamos entre 8 y 9.\nResponda STOP para no recibir más textos.', null, b, 300, owner);
+  tx('+10000000002', 'in', 'Gracias! Dejo la reja abierta', null, b, 290);
 });
 db.close();
 // Segunda empresa (JKL Homes): su propia información, con los mismos dueños.
@@ -231,4 +279,4 @@ db.close();
   jdb.close();
 }
 console.log('Listo: datos de práctica en', dir);
-console.log('Usuarios (contraseña para todos: demo-demo-123): dueno, jack (dueño con Ventas), mario (project manager), vero (vendedora), pedro, luis, cliente');
+console.log('Usuarios (contraseña para todos: demo-demo-123): dueno, jack (dueño con Ventas), mario (project manager), vero (vendedora), pedro, luis, juan (por hora), cliente');

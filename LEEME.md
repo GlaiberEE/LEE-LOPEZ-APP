@@ -24,6 +24,96 @@ No hay que instalar nada más: no usa `npm install` ni paquetes externos.
 | Gastos | Todo, con recibos | Registra compras (no ve totales) | Nunca |
 | Dinero de la obra | Todo | Nunca | Solo precio, change orders, sus pagos y saldo |
 
+## Nuevo en v2.11: gastos separados por tipo
+
+- En **Gastos** y en la pestaña **Gastos** de cada obra hay 4 botones arriba: **Todo**, **🧱 Materiales**, **👷 Subs y trabajadores** (pagos a subs y horas de trabajadores) y **📋 Otros gastos** (permisos, renta de equipo, basura, retrabajo, otro). Cada botón enseña su total y cuántos gastos son.
+- Al tocar uno, la lista enseña solo esos gastos. En Subs y trabajadores sale el total por persona (⏱ marca a los que se pagan por hora); en Materiales, el total por tienda.
+- "Descargar para Excel" baja solo lo que está viendo.
+- En el teléfono la lista de gastos ahora se ve como tarjetas (antes se cortaba el monto).
+- Los videos de dueños y de project managers ya muestran los botones nuevos.
+
+## Nuevo en v2.10: videos en el idioma de cada persona
+
+- Los 4 videos existen en **español y en inglés**, con las pantallas de la app en ese idioma. Cada persona ve automáticamente los de su idioma (el que eligió en ES | EN o en Mi cuenta). En la pantalla de entrada sale según el idioma elegido ahí.
+- Dentro de cada video hay un botón "Ver en inglés" / "Ver en español", por ejemplo para mandarle a alguien el otro idioma.
+- Los videos están en `public/tutoriales/es/` y `public/tutoriales/en/` (unos 19 MB en total).
+
+## Nuevo en v2.9: videos tutoriales dentro de la app
+
+- **Ayuda → Videos** (arriba de las preguntas): 4 tutoriales hechos con la app de verdad, sin sonido (los pasos van escritos en pantalla):
+  - Cómo instalar y entrar (Android, iPhone y computadora), 2 min, para todos.
+  - Para dueños y administradores, 5 min.
+  - Para project managers, 2 min.
+  - Para subs y trabajadores, 2 min.
+- Cada quien ve los suyos; los dueños ven los cuatro y pueden mandar cualquiera por WhatsApp o copiar su enlace.
+- En la pantalla de entrada hay un enlace "🎬 Video: cómo instalar y entrar", para quien todavía no tiene usuario.
+- Los videos están en `public/tutoriales/` (unos 10 MB en total). No se guardan en el teléfono: se ven por internet.
+
+## Nuevo en v2.8: personas nuevas sin usuario
+
+- **Pantalla de entrada:** abajo dice "¿Es su primera vez?" con el botón **No tengo usuario: pedir acceso**. La persona pone nombre, teléfono y quién es (cliente, trabajador/sub, oficina). A los dueños les llega un aviso y sale en Inicio → "Piden acceso a la app" con el botón **Crear usuario** ya lleno. Si el teléfono ya es de alguien con usuario, se trata como "olvidé mi contraseña".
+- **Crear usuario ya no pide contraseña:** la app inventa una temporal que vale 7 días y enseña el mensaje listo (enlace, usuario y contraseña) para mandarlo por WhatsApp, SMS o, si Twilio está puesto, por texto desde la app. Al entrar la primera vez, la persona tiene que poner su propia contraseña; nadie más la sabe.
+
+## Nuevo en v2.7: papeles de subs, publicidad y entrega de obra
+
+- **Dinero → Subs: papeles y 1099:** W-9 y certificado de seguro de cada sub (foto o PDF) con fecha de vencimiento; aviso en Inicio 30 días antes y al vencer. Un lien waiver por cada pago al sub (formas oficiales de Texas, Property Code 53.284; la app no las redacta). Suma del año por sub y reporte 1099-NEC en CSV para el contador (mínimo $2,000 desde 2026, $600 antes; se puede cambiar por año; corporaciones no aplican).
+- **Dinero → Publicidad:** anote el gasto mensual por canal; la app lo cruza con prospectos, estimados y ventas y enseña costo por prospecto, costo por cliente ganado, % de cierre y retorno.
+- **Entrega de la obra** (pestaña Tareas): lista de pendientes de la revisión final; con todo hecho, se manda un enlace y el cliente firma la entrega con el dedo. La obra pasa a Terminada, empieza la garantía y sale la petición de reseña.
+
+## Nuevo en v2.6: propuesta al cliente con firma y cobros por etapa
+
+En cada obra (o en Ventas → "Armar propuesta"), pestaña **Propuesta y cobros** (solo dueños):
+- Partidas con precio y costo estimado; la app enseña el margen estimado y avisa si baja de la alerta.
+- Descripción, condiciones, "válida hasta" y calendario de pagos (etapas en %, que se cumplen al firmar, al terminar una tarea o cuando el dueño lo marca).
+- **Mandar al cliente:** enlace (`/propuesta.html?t=…`) por texto, WhatsApp o correo. El cliente ve la propuesta en español o inglés, baja el PDF y firma con el dedo, sin cuenta. Nunca ve costos.
+- Al firmar: la obra pasa a "En obra", se fija el contrato y llega un aviso. Si se cambia después de mandarla, la app lo marca.
+- **Cobros:** cada etapa pasa a "Toca cobrar" cuando se cumple (aviso). "Facturar" crea el invoice (INV-año-número) en PDF y lo manda con el mismo enlace. Los pagos registrados se aplican solos, en orden; los change orders aprobados van en la última etapa. Vencidos y por cobrar salen en Inicio. El cliente ve su calendario de pagos en su portal.
+
+## Nuevo en v2.5: menú más simple y Módulos
+
+- Menú del dueño en 10 opciones: Inicio, Calendario, Obras, Ventas (si la tiene), Gastos, Dinero, Textos, Casos, Materiales, Equipo. Abajo y más chico: Historial, Mi cuenta, Ayuda.
+- **Inicio** tiene dos vistas: Resumen y Hoy en las obras (lo que antes era "Hoy").
+- **Dinero** junta Cuentas, Reportes y Proyecciones en pestañas.
+- En cada obra, Partidas es la vista de costos; Presupuesto por categoría queda en un enlace abajo de Partidas.
+- **Mi cuenta → Módulos:** prender o apagar, por empresa, Horas y nómina, Project managers, Proyecciones, Agentes de AI e Importar. Apagar solo quita el menú; la información se queda.
+
+## Nuevo en v2.4.1: calendario por día, semana y mes
+
+En Calendario, arriba: **Día · Semana · Mes**. Las flechas avanzan o regresan un día, una semana o un mes. Tocar el número de un día abre ese día completo (tarea, cliente, dirección, quién y estado). Cada persona ve la última vista que eligió; en el teléfono empieza en Semana.
+
+## Nuevo en v2.4: trabajadores por hora y nómina
+
+Menú → **Horas y nómina** (solo dueños):
+- **Forma de pago por trabajador:** "Por hora" (con su pago por hora) o "Como sub" (precio por trabajo, en Subcontratistas). Se elige al crear el usuario o en la pestaña Trabajadores y pago.
+- **Anotar horas a mano** para quien no marca en el teléfono (día, entrada, salida, comida sin pago).
+- **Tiempo extra:** lo que pase de 40 h por semana se paga a 1.5× (configurable). El extra se suma como gasto de mano de obra en las obras donde se trabajaron esas horas.
+- **Nómina de la semana:** horas, extra y total por persona; "Marcar pagado" (Zelle, cheque, efectivo…). La semana pagada queda cerrada para cambios hasta quitar el pago.
+- **Reporte** por trabajador o por obra en cualquier rango de fechas.
+- **En cada obra** (pestaña Subcontratistas): horas y costo de cada trabajador por hora.
+- La app no calcula impuestos de nómina (retenciones, W-2); eso lo maneja su contador o servicio de nómina.
+
+## Nuevo en v2.3.2: importar directo de Google Drive
+
+En Obras → Importar → "📁 Elegir de Google Drive" se ven las carpetas y libros (Google Sheets o .xlsx) y se marcan los que se quieren importar; ya no hay que descargarlos. Los que ya se importaron aparecen marcados.
+- Conexión: una cuenta de servicio de Google Cloud (solo lectura). En Render → Environment: `GOOGLE_SERVICE_ACCOUNT_JSON` = el contenido del archivo .json de su llave. Opcional: `GOOGLE_DRIVE_FOLDER_ID` = la carpeta con la que abre (se puede pegar la dirección completa de la carpeta).
+- En Drive, compartir la carpeta de los libros con el correo de la cuenta de servicio (Mi cuenta → Google Drive lo muestra) como Lector.
+
+## Nuevo en v2.3.1: aviso de versión nueva
+
+Cuando se publica una versión, el teléfono de cada persona la baja solo y le aparece arriba "Hay una versión nueva de la app — Actualizar". Con un toque recarga; si está escribiendo algo, puede terminar primero. La app nunca se recarga sola. La huella de versión se calcula sola al arrancar el servidor (no hay que acordarse de cambiar nada).
+
+## Nuevo en v2.3: textos, Grok y escaneo
+
+**Mensajes de texto (Textos).** Dueños y PMs mandan y reciben textos desde el número de la empresa. Las respuestas llegan a la app con aviso.
+- Cada texto empieza con el nombre de la empresa, y el primero a cada número dice cómo dejar de recibirlos (STOP). Así lo piden las compañías de teléfono.
+- Un PM solo textea a la gente de sus obras. Subs, trabajadores y clientes no usan esta pantalla.
+- En los avisos de cambio de fecha y novedades aparece "💬 Texto desde la app".
+- Activar: cuenta de Twilio con un número y registro A2P 10DLC. En Render → Environment: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM`. En Twilio, en el número, "A message comes in" → `https://<su-app>/sms/twilio/ee` (HTTP POST). JKL Homes usa su propio número: `TWILIO_FROM_JKL` y `/sms/twilio/jkl`.
+
+**Grok conectado a la app (MCP).** Al crear la llave de un agente aparece la "dirección para Grok" (`https://<su-app>/mcp/<llave>`). En grok.com/connectors → New Connector → Custom, péguela. Grok ve las herramientas: obras, tareas, gastos, reportes, casos, tickets, textos, ventas. Usa las mismas reglas del agente: solo lectura si la llave es de lectura, lo que mueve dinero espera a un dueño, todo en el Historial.
+
+**Escaneo.** Los tickets se leen con Claude (`ANTHROPIC_API_KEY`) o con Grok (`XAI_API_KEY`; Grok lee fotos, no PDF). Además de la obra, el gasto queda en la partida que corresponde cuando es clara. Sin ninguna clave, el escaneo guarda la foto y queda "por asignar" para llenar el monto.
+
 ## Nuevo en v2.2.2: lista para la nube
 
 - `render.yaml`: configuración para publicar la app en Render con un disco que no se borra (`/data`).
