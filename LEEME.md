@@ -24,6 +24,31 @@ No hay que instalar nada más: no usa `npm install` ni paquetes externos.
 | Gastos | Todo, con recibos | Registra compras (no ve totales) | Nunca |
 | Dinero de la obra | Todo | Nunca | Solo precio, change orders, sus pagos y saldo |
 
+## Nuevo en v2.13: traducción automática español ↔ inglés
+
+- Cada quien escribe en su idioma y cada quien lee en el suyo: si Salomón escribe un caso en español y el PM (Jack) usa la app en inglés, Jack lo lee en inglés; lo que Jack conteste, Salomón lo lee en español.
+- Debajo de cada texto traducido sale "🌐 Traducido del español · Ver original"; el original siempre se guarda y nunca se cambia.
+- Se traduce: casos (título y mensajes), lo que escribe un sub al avisar un atraso y lo que contesta, notas del día del PM, novedades y reportes diarios que ve el cliente, change orders que ve el cliente, textos que llegan, y "Mis pendientes".
+- **Textos (SMS):** con la casilla "Si la persona habla otro idioma, mandárselo traducido" (viene marcada), el texto sale en el idioma de quien lo recibe y en la conversación queda lo que usted escribió. Los mensajes de acceso y los que la app arma ya van en el idioma correcto y no se traducen. A un cliente sin usuario en la app no se le traduce (la app no sabe su idioma).
+- **Qué necesita:** la misma clave de AI que la lectura de tickets (ANTHROPIC_API_KEY o XAI_API_KEY en Render). En Mi cuenta sale "🌐 Traducción automática: Activada / No configurada". Sin clave, todo funciona igual, sin traducir.
+- Cada texto se traduce una sola vez y se guarda; volver a leerlo no cuesta. Si la AI tarda, el mensaje se guarda igual y la traducción aparece al volver a abrir.
+- Nombres, números, montos, fechas, direcciones, medidas y códigos de obra no se cambian.
+
+## Nuevo en v2.12.1 y v2.12.2: un dueño también puede ser el encargado de una obra
+
+- En **Editar obra** (y al crear una obra), "Project manager a cargo" ahora ofrece también a los dueños, marcados "(dueño)".
+- El dueño que es encargado de una obra recibe lo mismo que un PM: los casos que abren los subs o el cliente quedan a su cargo, le llegan los avisos y los recordatorios, y en "Mis pendientes" ve las tareas atrasadas de esa obra. No entra en las calificaciones de PM.
+- Compartir un caso con el cliente lo puede hacer un dueño o el PM de la obra. Un sub nunca puede.
+- Los videos de dueños, project managers y subs ya muestran "Mis pendientes" y los casos con responsable, fecha y varios subs (en español e inglés).
+
+## Nuevo en v2.12: pendientes y comunicación en los casos
+
+- **Aviso al PM:** cuando un sub abre un caso o contesta en una obra del PM, al PM le llega la notificación (antes solo a los dueños). Los avisos ahora le llegan a todos los que participan: dueños, PM de la obra, responsable y subs del caso, menos a quien escribió.
+- **Responsable y fecha límite:** al abrir un caso (o después, con "📌 Responsable y fecha") se elige quién lo tiene que resolver y para cuándo. Si un sub o el cliente abre el caso, queda a cargo del PM de la obra. En la lista de casos se ve el responsable y la fecha (en rojo si ya venció).
+- **Recordatorios:** si un caso abierto pasa 24 horas sin respuesta (4 horas si es urgente), le llega un recordatorio a quien le toca contestar: a los subs si lo último lo escribió la empresa, o al responsable si lo último lo escribió un sub. Si después de otro tanto sigue igual, se avisa a los dueños. Si se pasa la fecha límite, se avisa al responsable y a los dueños. Solo de 7 a.m. a 8 p.m. y una vez por cada vez.
+- **Varios subs en un caso:** al abrirlo se pueden marcar varios subs de la obra, o agregarlos/quitarlos después con "👥 Subs". Todos ven y contestan lo interno; nunca lo que se habla con el cliente.
+- **Mis pendientes:** tarjeta arriba en el Inicio de dueños y PMs, y en Mis obras de los subs: casos a su cargo, los que esperan su respuesta, mensajes nuevos y (PM y subs) tareas atrasadas. Con un toque abre el caso o la obra.
+
 ## Nuevo en v2.11: gastos separados por tipo
 
 - En **Gastos** y en la pestaña **Gastos** de cada obra hay 4 botones arriba: **Todo**, **🧱 Materiales**, **👷 Subs y trabajadores** (pagos a subs y horas de trabajadores) y **📋 Otros gastos** (permisos, renta de equipo, basura, retrabajo, otro). Cada botón enseña su total y cuántos gastos son.

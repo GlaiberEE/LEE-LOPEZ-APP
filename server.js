@@ -266,7 +266,7 @@ if (require.main === module) {
   // Avisos automáticos (resumen de PMs a las 7 am, recordatorio de nota a las 5 pm).
   const pmTick = () => server.dbs().forEach(d => require('./lib/pmreport').tick(d));
   setTimeout(pmTick, 60 * 1000).unref(); setInterval(pmTick, 30 * 60 * 1000).unref();
-  const salesTick = () => server.dbs().forEach(d => { require('./lib/sales').tick(d); try { require('./lib/billing').check(d); } catch (e) { console.error('[cobros]', e.message); } });
+  const salesTick = () => server.dbs().forEach(d => { require('./lib/sales').tick(d); try { require('./lib/followup').tick(d); } catch (e) { console.error('[pendientes]', e.message); } try { require('./lib/billing').check(d); } catch (e) { console.error('[cobros]', e.message); } });
   setInterval(salesTick, 5 * 60 * 1000).unref();
   server.listen(port, host, () => {
     console.log('');

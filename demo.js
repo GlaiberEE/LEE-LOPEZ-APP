@@ -155,6 +155,20 @@ tx(db, () => {
   }
   // Project manager a cargo de la obra de Rodríguez.
   db.prepare('UPDATE jobs SET pm_id=? WHERE id=?').run(mario, b);
+  // Caso de ejemplo: lo abrió Pedro, está a cargo de Mario con fecha límite, y Luis también participa.
+  { const iid = Number(db.prepare("INSERT INTO issues(job_id,kind,title,urgent,status,created_by,created_role,worker_id,client_visible,assignee_id,due_date,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,datetime('now','-26 hours'),datetime('now','-3 hours'))")
+      .run(b, 'problema', 'Caja eléctrica donde va la cubierta', 1, 'abierto', pedro, 'worker', pedro, 0, mario, day(1)).lastInsertRowid);
+    db.prepare('INSERT INTO issue_members(issue_id,user_id,added_by) VALUES(?,?,?)').run(iid, luis, mario);
+    const msg = (uid, body, h) => db.prepare("INSERT INTO issue_messages(issue_id,user_id,visibility,body,created_at) VALUES(?,?,'interno',?,datetime('now',?))").run(iid, uid, body, `-${h} hours`);
+    msg(pedro, 'Al poner la base de la cubierta salió una caja eléctrica justo donde va el granito. No sigo con esa parte hasta que me digan.', 26);
+    msg(mario, '📌 Responsable / In charge: Mario (PM demo) · Fecha límite / Due: ' + day(1), 25);
+    msg(mario, '➕ Luis (demo) se unió al caso / joined the case', 25);
+    msg(mario, 'Luis, ¿se puede mover la caja 12 pulgadas a la izquierda? Pedro, mientras avanza con el lado sur.', 24);
+    msg(luis, 'Sí se puede, pero necesito cortar el muro. Mañana temprano lo hago.', 3); }
+  // Pregunta de ejemplo del cliente (esperando respuesta de la empresa).
+  { const qid = Number(db.prepare("INSERT INTO issues(job_id,kind,title,urgent,status,created_by,created_role,client_visible,created_at,updated_at) VALUES(?,?,?,0,'abierto',?,'client',1,datetime('now','-5 hours'),datetime('now','-5 hours'))")
+      .run(a, 'pregunta', '¿Pueden poner una luz extra en la esquina?', cli).lastInsertRowid);
+    db.prepare("INSERT INTO issue_messages(issue_id,user_id,visibility,body,created_at) VALUES(?,?,'cliente',?,datetime('now','-5 hours'))").run(qid, cli, 'Hi! Could you add one more recessed light in the corner by the grill? Let me know the cost.'); }
   // Pago directo a un sub (para ver su estado de cuenta).
   if (!db.prepare('SELECT id FROM subs WHERE job_id=? AND user_id=?').get(b, pedro)) db.prepare('INSERT INTO subs(job_id,name,trade,agreed_cents,user_id) VALUES(?,?,?,?,?)').run(b, 'Pedro (demo)', 'Carpintería', 450000, pedro);
   const ps = db.prepare('SELECT id FROM subs WHERE job_id=? AND user_id=?').get(b, pedro);

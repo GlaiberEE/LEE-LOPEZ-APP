@@ -716,3 +716,12 @@ ul.punch li input:checked + span { text-decoration: line-through; color: #888; }
   table.exptable tfoot td:empty { display: none; }
 }
 @media (max-width: 760px) { table.exptable tfoot td.num { order: 0; margin-left: 0; } table.exptable tfoot td.num::before { content: none; } }
+.case-plan { display: flex; flex-wrap: wrap; gap: .35rem .9rem; align-items: center; margin: .35rem 0 .2rem; font-size: .85rem; }
+.pick-people { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: .3rem .8rem; margin: .2rem 0 .3rem; }
+.mypend { border-left: 4px solid var(--red, #c0392b); }
+.mypend.ok { border-left-color: var(--lime, #b5d33d); }
+.pend-row { display: flex; gap: .7rem; align-items: center; padding: .6rem 0; border-top: 1px solid var(--line, #e6e6e0); cursor: pointer; }
+.pend-row:first-of-type { border-top: 0; }
+.pend-row .ic { font-size: 1.3rem; }
+.pend-row .col-end { display: flex; flex-direction: column; align-items: flex-end; gap: .2rem; text-align: right; }
+.pend-row:hover { background: #f7f7f3; }

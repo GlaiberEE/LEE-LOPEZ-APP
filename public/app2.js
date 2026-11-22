@@ -323,7 +323,7 @@ function pmDayBlock(p) {
   return `<div class="pmday"><div class="row between wrap"><h3 style="margin:0">${esc(p.name)}</h3><span class="small">${t('{n} acciones registradas', { n: p.total })}</span></div>
     <div class="row wrap small">${Object.entries(p.counts).map(([k, n]) => `<span class="pchip"><b>${n}</b> ${esc(G[k] || k)}</span>`).join('') || `<span class="muted">${t('Sin actividad registrada este día.')}</span>`}</div>
     ${p.tasks_done.length ? `<div class="small"><b>✓ ${t('Tareas terminadas')}:</b> ${p.tasks_done.map(x => esc(taskTitle(x.title)) + ' (' + esc(x.client_name) + ')').join(', ')}</div>` : ''}
-    ${p.note ? `<div class="pmnote"><div><b>${t('Qué hizo')}:</b> ${esc(p.note.did)}</div>${p.note.problems ? `<div><b>${t('Problemas')}:</b> ${esc(p.note.problems)}</div>` : ''}${p.note.next_steps ? `<div><b>${t('Qué sigue')}:</b> ${esc(p.note.next_steps)}</div>` : ''}</div>`
+    ${p.note ? `<div class="pmnote"><div><b>${t('Qué hizo')}:</b> ${trx(p.note.did, p.note.did_tr, p.note.did_from, { inline: true })}</div>${p.note.problems ? `<div><b>${t('Problemas')}:</b> ${trx(p.note.problems, p.note.problems_tr, p.note.problems_from, { inline: true })}</div>` : ''}${p.note.next_steps ? `<div><b>${t('Qué sigue')}:</b> ${trx(p.note.next_steps, p.note.next_steps_tr, p.note.next_steps_from, { inline: true })}</div>` : ''}</div>`
       : `<div class="small neg">✎ ${t('No escribió su nota del día.')}</div>`}
     ${p.items.length ? `<details><summary class="small">${t('Ver detalle')}</summary><ul class="small acts">${p.items.map(i => `<li><span class="muted">${esc(i.at.slice(11, 16))} UTC</span> · ${esc(G[i.group] || i.group)}${i.client_name ? ' · ' + esc(i.client_name) : ''}${i.detail ? ' · ' + esc(i.detail) : ''}</li>`).join('')}</ul></details>` : ''}</div>`;
 }
@@ -368,7 +368,7 @@ async function viewPmReports(app, opts = {}) {
       ], onSubmit: v => api('POST', `/api/pm/${p.id}/review`, { month, score: Number(v.score), comments: v.comments }) })) again();
     };
     const nb = $('[data-notes]', c); if (nb) nb.onclick = () => formDialog({ title: t('Notas de {x}', { x: p.name }), submit: t('Cerrar'), fields: [],
-      intro: sc.notes.map(n => `<div class="pmnote"><b>${fdate(n.date)}</b><div>${esc(n.did)}</div>${n.problems ? `<div class="small">⚠️ ${esc(n.problems)}</div>` : ''}${n.next_steps ? `<div class="small">➡️ ${esc(n.next_steps)}</div>` : ''}</div>`).join(''), onSubmit: async () => {} });
+      intro: sc.notes.map(n => `<div class="pmnote"><b>${fdate(n.date)}</b><div>${esc(n.did_tr || n.did)}</div>${n.problems ? `<div class="small">⚠️ ${esc(n.problems_tr || n.problems)}</div>` : ''}${n.next_steps ? `<div class="small">➡️ ${esc(n.next_steps_tr || n.next_steps)}</div>` : ''}</div>`).join(''), onSubmit: async () => {} });
   }
 }
 // PM: su nota del día (y lo que la app registró).
@@ -741,7 +741,7 @@ async function showTempAccess(r) {
 document.addEventListener('click', async e => {
   const b = e.target && e.target.closest && e.target.closest('#sendacc'); if (!b) return;
   const box = b.closest('dialog').querySelector('.card.small'); b.disabled = true;
-  try { await api('POST', '/api/sms/send', { user_id: Number(b.dataset.uid), body: box.textContent }); b.textContent = '✅ ' + t('Mandado'); toast(t('Mandado')); }
+  try { await api('POST', '/api/sms/send', { user_id: Number(b.dataset.uid), body: box.textContent, translate: false }); b.textContent = '✅ ' + t('Mandado'); toast(t('Mandado')); }
   catch (err) { b.disabled = false; toast(err.message, true); }
 });
 document.addEventListener('click', e => { if (e.target && e.target.id === 'cpy') { const box = e.target.closest('dialog').querySelector('.card.small'); navigator.clipboard && navigator.clipboard.writeText(box.textContent).then(() => toast(t('Copiado'))); } });
@@ -1152,14 +1152,15 @@ async function showThread(el, phone, reload) {
   const d = await api('GET', `/api/sms/thread?phone=${encodeURIComponent(phone)}`);
   el.innerHTML = `<div class="row between wrap"><div><a href="#/textos" class="small mobile-only">← ${t('Textos')}</a><h2 style="margin:0">${esc(d.contact.name || phone)}</h2>
       <div class="small muted">${esc(d.contact.role_label ? t(d.contact.role_label) : '')} · <a href="tel:${esc(phone)}">${esc(phone)}</a></div></div></div>
-    <div class="sms-msgs">${d.messages.map(m => `<div class="sms-m ${m.direction}"><div class="bubble">${esc(m.body)}</div>
+    <div class="sms-msgs">${d.messages.map(m => `<div class="sms-m ${m.direction}"><div class="bubble">${trx(m.body, m.body_tr, m.body_from)}${m.original ? `<div class="sms-orig small">🌐 ${t('Se mandó traducido. Usted escribió:')} “${esc(m.original)}”</div>` : ''}</div>
       <div class="small muted">${smsTime(m.created_at)}${m.by_name ? ' · ' + esc(m.by_name) : ''}${m.status === 'error' ? ` · <span class="neg">${t('No se mandó')}: ${esc(m.error)}</span>` : ''}</div></div>`).join('') || `<p class="empty small">${t('Todavía no hay textos.')}</p>`}</div>
     ${SMSST.enabled ? `<form class="sms-send" id="smsf"><textarea id="smsb" rows="2" maxlength="1000" placeholder="${t('Escriba el mensaje…')}" required></textarea><button class="primary">${t('Mandar')}</button></form>
+      ${SMSST.translate ? `<label class="check small"><input type="checkbox" id="smstr" checked> 🌐 ${t('Si la persona habla otro idioma, mandárselo traducido')}</label>` : ''}
       <p class="small muted">${t('No ponga precios ni costos internos en un texto a un sub o cliente.')}</p>` : ''}`;
   const box = $('.sms-msgs', el); box.scrollTop = box.scrollHeight;
   if ($('#smsf', el)) $('#smsf', el).onsubmit = async e => {
     e.preventDefault(); const b = $('button', e.target); b.disabled = true;
-    try { await api('POST', '/api/sms/send', { phone, body: $('#smsb', el).value }); toast(t('Texto mandado')); reload(); }
+    try { await api('POST', '/api/sms/send', { phone, body: $('#smsb', el).value, translate: $('#smstr', el) ? $('#smstr', el).checked : true }); toast(t('Texto mandado')); reload(); }
     catch (err) { toast(err.message, true); b.disabled = false; }
   };
 }
@@ -1169,14 +1170,15 @@ async function newTextDialog(preset) {
     { name: 'phone', label: t('Para'), type: 'select', required: true, value: preset && preset.phone, options: [['', '—'], ...contacts.map(c => [c.phone, `${c.name} · ${t(c.role_label)}`])] },
     ...(ME.role === 'owner' ? [{ name: 'other', label: t('U otro número'), type: 'tel', hint: t('Solo dueños') }] : []),
     { name: 'body', label: t('Mensaje'), type: 'textarea', required: true, value: preset && preset.text },
-  ], onSubmit: v => api('POST', '/api/sms/send', { phone: v.other || v.phone, body: v.body }) });
+    ...(SMSST.translate ? [{ name: 'translate', label: '🌐 ' + t('Si la persona habla otro idioma, mandárselo traducido'), type: 'check', value: true }] : []),
+  ], onSubmit: v => api('POST', '/api/sms/send', { phone: v.other || v.phone, body: v.body, translate: SMSST.translate ? !!v.translate : false }) });
   if (v) { toast(t('Texto mandado')); location.hash = '#/textos/' + encodeURIComponent(v.other ? '' : v.phone); }
 }
 // Botón "Texto desde la app" junto a WhatsApp / Mensaje de texto en los avisos.
 document.addEventListener('click', async e => {
   const b = e.target && e.target.closest && e.target.closest('[data-smsapp]'); if (!b) return;
   e.preventDefault(); b.disabled = true;
-  try { await api('POST', '/api/sms/send', { phone: b.dataset.phone, body: b.dataset.text }); toast(t('Texto mandado')); b.textContent = '✓ ' + t('Mandado'); }
+  try { await api('POST', '/api/sms/send', { phone: b.dataset.phone, body: b.dataset.text, translate: false }); toast(t('Texto mandado')); b.textContent = '✓ ' + t('Mandado'); }
   catch (err) { toast(err.message, true); b.disabled = false; }
 });
 async function smsSettingsCard(app) {

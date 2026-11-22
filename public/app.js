@@ -29,6 +29,21 @@ function bindLang(root = document) { $$('[data-lang]', root).forEach(b => { b.on
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Texto escrito por otra persona: se enseña traducido al idioma de quien lo lee, con "Ver original".
+const LNAME = () => ({ es: t('español'), en: t('inglés') });
+function trx(orig, tr, from, opts = {}) {
+  if (!tr) return esc(orig);
+  return `<span class="trx" data-a="${esc(tr)}" data-b="${esc(orig)}">${esc(tr)}</span>${opts.inline ? ' ' : '<br>'}<a href="#" class="tr-tog" data-from="${esc(from || '')}">🌐 ${esc(t('Traducido del {x}', { x: LNAME()[from] || from }))} · ${esc(t('Ver original'))}</a>`;
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('.tr-tog'); if (!a) return;
+  e.preventDefault(); e.stopPropagation();
+  const s = a.previousElementSibling && a.previousElementSibling.classList.contains('trx') ? a.previousElementSibling : a.parentElement.querySelector('.trx');
+  if (!s) return;
+  const showingOrig = s.dataset.showing === 'b';
+  s.textContent = showingOrig ? s.dataset.a : s.dataset.b; s.dataset.showing = showingOrig ? 'a' : 'b';
+  a.textContent = '🌐 ' + (showingOrig ? t('Traducido del {x}', { x: LNAME()[a.dataset.from] || a.dataset.from }) + ' · ' + t('Ver original') : t('Original') + ' · ' + t('Ver traducción'));
+}, true);
 const fmt = c => (c < 0 ? '-' : '') + '$' + (Math.abs(c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmt0 = c => (c < 0 ? '-' : '') + '$' + Math.round(Math.abs(c || 0) / 100).toLocaleString('en-US');
 const toCents = s => { const x = String(s ?? '').replace(/[$,\s]/g, ''); if (x === '') return 0; const n = Number(x); return Number.isFinite(n) ? Math.round(n * 100) : NaN; };
@@ -381,7 +396,7 @@ async function boot() {
   const app = $('#app');
   document.documentElement.lang = LANG;
   const st = await api('GET', '/api/status');
-  ME = st.user; COMPANY = st.company || COMPANY;
+  ME = st.user; COMPANY = st.company || COMPANY; window.APP_VERSION = st.version || '';
   COMPANIES = await api('GET', '/api/companies').catch(() => []);
   document.body.dataset.company = COMPANY.key;
   if (ME && ME.lang && ME.lang !== LANG) {   // el idioma elegido por la persona la sigue en cualquier dispositivo
@@ -523,13 +538,15 @@ async function viewDashboard(app) {
   await ownerProCards(app, () => viewDashboard(app)).catch(e => console.error(e));
   await billingDueCard(app).catch(e => console.error(e));
   await papersAlertCard(app).catch(e => console.error(e));
+  const mp = document.createElement('div'); app.insertBefore(mp, app.children[1]);
+  await myPendingCard(mp, () => viewDashboard(app)).catch(e => console.error(e));
   await Promise.all([casesCard(cs, { title: '⚠️ ' + t('Casos abiertos'), onlyOpen: true, showJob: true, after: () => viewDashboard(app) }), ownerNoticesCard(nb, () => viewDashboard(app)), ownerDocsCard(db2, () => viewDashboard(app)), ownerScansCard(sc, () => viewDashboard(app))]);
 }
 
 // ================= DUEÑO: obras =================
 function jobFormFields(j = {}, pms = []) {
   return [
-    ...(ME.role === 'owner' && pms.length ? [{ name: 'pm_id', label: t('Project manager a cargo'), type: 'select', value: j.pm_id ?? '', options: [['', t('— Ninguno (lo manejan los dueños) —')], ...pms.map(p => [p.id, p.name])] }] : []),
+    ...(ME.role === 'owner' && pms.length ? [{ name: 'pm_id', label: t('Project manager a cargo'), type: 'select', value: j.pm_id ?? '', hint: t('Puede ser un project manager o uno de los dueños. Recibe los avisos y los casos de la obra.'), options: [['', t('— Ninguno (lo manejan los dueños) —')], ...pms.map(p => [p.id, p.role === 'owner' ? `${p.name} (${t('dueño')})` : p.name])] }] : []),
     { name: 'client_name', label: t('Cliente'), required: true, value: j.client_name },
     { name: 'client_phone', label: t('Teléfono'), type: 'tel', value: j.client_phone },
     { name: 'client_email', label: t('Email'), type: 'email', value: j.client_email },
@@ -548,7 +565,8 @@ function jobFormFields(j = {}, pms = []) {
 }
 async function newJob() {
   let id;
-  const ok = await formDialog({ title: t('Nueva obra'), fields: jobFormFields(), submit: t('Crear obra'),
+  const pms = ME.role === 'owner' ? (await api('GET', '/api/users').catch(() => [])).filter(u => ['pm', 'owner'].includes(u.role) && u.active) : [];
+  const ok = await formDialog({ title: t('Nueva obra'), fields: jobFormFields({}, pms), submit: t('Crear obra'),
     onSubmit: async v => { id = (await api('POST', '/api/jobs', v)).id; } });
   if (ok) { toast(t('Obra creada con su lista de tareas')); location.hash = `#/obra/${id}`; }
 }
@@ -600,7 +618,7 @@ async function viewJob(app, id, tab) {
   <div id="tab"></div>`;
   $('#edit').onclick = async () => {
     let r;
-    if (await formDialog({ title: t('Editar obra'), fields: jobFormFields(j, users.filter(u => u.role === 'pm' && u.active)), onSubmit: async v => { r = await api('PUT', `/api/jobs/${id}`, { ...v, _expect: { quoted_cents: j.quoted_cents, status: j.status } }); } })) { toast(t('Guardado')); reload(); shareIfClient(r); }
+    if (await formDialog({ title: t('Editar obra'), fields: jobFormFields(j, users.filter(u => ['pm', 'owner'].includes(u.role) && u.active)), onSubmit: async v => { r = await api('PUT', `/api/jobs/${id}`, { ...v, _expect: { quoted_cents: j.quoted_cents, status: j.status } }); } })) { toast(t('Guardado')); reload(); shareIfClient(r); }
   };
   const box = $('#tab');
   const tabs = { tareas: async (box, d, o) => { await tabTasks(box, d, o); if (ME.role === 'owner' && ['activo', 'terminado'].includes(d.job.status)) await closeoutCard(box, o.id); }, gastos: tabExpenses, subs: async (box, d, o) => { await tabSubs(box, d, o); if (ME.role === 'owner') await jobLaborCard(box, o.id); }, cambios: tabChanges, pagos: tabPayments, fotos: tabPhotos, casos: tabCases, datos: tabData, presupuesto: tabBudget, permisos: tabPermits, diario: tabDaily, materiales: tabMaterials, propuesta: tabProposal, partidas: async (box, d, o) => { await tabLines(box, d, o); if (ME.role === 'owner') { const p = document.createElement('p'); p.className = 'small muted'; p.innerHTML = `${t('¿Prefiere verlo por categoría de gasto?')} <a href="#/obra/${o.id}/presupuesto">${t('Presupuesto por categoría')}</a>`; box.appendChild(p); } } };
@@ -1021,6 +1039,11 @@ async function viewAccount(app) {
     sc.innerHTML = `<h2>📷 ${t('Lectura automática de tickets')}</h2><p>${ai.ai ? `<span class="badge b-hecho">${t('Activada')}</span>` : `<span class="badge b-pendiente">${t('No configurada')}</span>`}</p>
       <p class="small muted">${ai.ai ? t('Los tickets se leen solos (tienda, fecha, total), se archivan en la obra correcta y en su partida cuando la app está segura. Lee con: {x}.', { x: ai.provider === 'grok' ? 'Grok (xAI)' : 'Claude' }) : t('Sin la lectura automática, el escaneo guarda la foto y usted llena el monto con un toque. Para activarla, ponga ANTHROPIC_API_KEY (Claude) o XAI_API_KEY (Grok) en Render → Environment.')}</p>`;
     app.appendChild(sc);
+    const tc = document.createElement('div'); tc.className = 'card';
+    const trOn = !!ai.ai;
+    tc.innerHTML = `<h2>🌐 ${t('Traducción automática')}</h2><p>${trOn ? `<span class="badge b-hecho">${t('Activada')}</span>` : `<span class="badge b-pendiente">${t('No configurada')}</span>`}</p>
+      <p class="small muted">${trOn ? t('Lo que escribe cada persona (casos, avisos de atraso, notas del día, novedades y reportes al cliente, textos) se traduce solo al idioma de quien lo lee. Siempre puede tocar “Ver original”.') : t('Usa la misma clave que la lectura de tickets. Sin ella, cada quien lee los mensajes en el idioma en que se escribieron.')}</p>`;
+    app.appendChild(tc);
     await modulesCard(app);
     await smsSettingsCard(app);
     await driveSettingsCard(app);
@@ -1043,7 +1066,8 @@ async function viewWorkerHome(app) {
   const ck = document.createElement('div'); app.insertBefore(ck, app.children[1]);
   const cb = document.createElement('div'); app.insertBefore(cb, app.children[3]);
   const nx = document.createElement('div'); app.insertBefore(nx, app.children[1]);
-  await Promise.all([workerNextCard(nx).catch(e => console.error(e)), workerClockCard(ck, jobs, () => viewWorkerHome(app)), workerNoticesCard(nb, () => viewWorkerHome(app)), casesCard(cb, { title: '⚠️ ' + t('Mis casos'), onlyOpen: true, showJob: true, after: () => viewWorkerHome(app) })]);
+  const mp = document.createElement('div'); app.insertBefore(mp, app.children[1]);
+  await Promise.all([myPendingCard(mp, () => viewWorkerHome(app)).catch(e => console.error(e)), workerNextCard(nx).catch(e => console.error(e)), workerClockCard(ck, jobs, () => viewWorkerHome(app)), workerNoticesCard(nb, () => viewWorkerHome(app)), casesCard(cb, { title: '⚠️ ' + t('Mis casos'), onlyOpen: true, showJob: true, after: () => viewWorkerHome(app) })]);
 }
 
 async function viewWorkerJob(app, id) {
@@ -1117,7 +1141,7 @@ async function viewClient(app, id) {
       <span class="small muted nowrap">${x.status === 'hecho' ? fdate(x.done_date) : ST[x.status]}</span></li>`).join('')}</ul></div>
     <div class="card"><h2>${t('Fotos')}</h2>${d.photos.length ? `<div class="photos">${d.photos.map(p => `<figure><img src="/files/${p.id}" data-view="${p.id}" alt="" loading="lazy"><figcaption>${esc(p.caption)} ${fdate(p.created_at.slice(0, 10))}</figcaption></figure>`).join('')}</div>` : `<p class="empty">${t('Agregaremos fotos conforme avance el trabajo.')}</p>`}</div>
     <div class="card"><h2>${t('Pagos')}</h2><div class="money-strip"><div><span>${t('Total del contrato')}</span><b>${fmt(m.contract)}</b></div><div><span>${t('Pagado')}</span><b>${fmt(m.paid)}</b></div><div><span>${t('Saldo')}</span><b>${fmt(m.balanceDue)}</b></div></div>
-      ${d.changes.length ? `<h3 style="margin-top:1rem">${t('Change orders')}</h3><table><tbody>${d.changes.map(c => `<tr><td class="nowrap small">${fdate(c.date)}</td><td>${esc(c.description)}</td><td>${c.status === 'aprobado' ? `<span class="badge b-hecho">${t('Aprobado')}</span>` : `<span class="badge b-pendiente">${t('Pendiente')}</span>`}</td><td class="num">${fmt(c.price_cents)}</td></tr>`).join('')}</tbody></table>` : ''}
+      ${d.changes.length ? `<h3 style="margin-top:1rem">${t('Change orders')}</h3><table><tbody>${d.changes.map(c => `<tr><td class="nowrap small">${fdate(c.date)}</td><td>${esc(c.description_tr || c.description)}</td><td>${c.status === 'aprobado' ? `<span class="badge b-hecho">${t('Aprobado')}</span>` : `<span class="badge b-pendiente">${t('Pendiente')}</span>`}</td><td class="num">${fmt(c.price_cents)}</td></tr>`).join('')}</tbody></table>` : ''}
       ${d.payments.length ? `<h3 style="margin-top:1rem">${t('Historial de pagos')}</h3><table><tbody>${d.payments.map(p => `<tr><td>${fdate(p.date)}</td><td>${esc(t(p.method))}</td><td class="num">${fmt(p.amount_cents)}</td></tr>`).join('')}</tbody></table>` : ''}</div>
     ${j.warranty_until ? `<div class="card"><h2>${t('Garantía')}</h2><p>${t('Su trabajo está cubierto por nuestra garantía de 1 año hasta el {d}.', { d: `<b>${fdate(j.warranty_until)}</b>` })}</p></div>` : ''}
     <p style="text-align:center"><a class="btn primary" target="_blank" rel="noopener" href="/api/jobs/${j.id}/pdf?lang=${LANG}">📄 ${t('Descargar PDF de mi proyecto')}</a></p>
@@ -1158,7 +1182,7 @@ function updateText(u, lang) {
     if (d.status === 'activo') txt = tl(lang, '¡Su proyecto comenzó!') + (d.end_date ? ' ' + tl(lang, 'Fecha estimada de fin: {d}.', { d: fdateIn(lang, d.end_date) }) : '');
     if (d.status === 'terminado') txt = tl(lang, 'Su proyecto está terminado. Garantía hasta el {d}.', { d: fdateIn(lang, d.warranty_until) });
   }
-  const note = (u.note || '').trim();
+  const note = ((lang === LANG ? u.note_tr : u.note_client) || u.note || '').trim();
   return [txt, note && note + (/[.!?]$/.test(note) ? '' : '.')].filter(Boolean).join(' ');
 }
 
@@ -1319,7 +1343,7 @@ async function ownerNoticesCard(box, refresh) {
   box.innerHTML = `<h2>📅 ${t('Calendario: avisos a subs')}</h2>
     ${replied.map(n => { const v = noticeLine(n); return `<div class="notice reply" data-id="${n.id}">
       <div>${n.kind === 'worker' ? t('{who} avisa que se atrasa en “{task}” ({place}). Puede regresar el {d}.', v) : t('{who} puede regresar a “{task}” ({place}) el {d}.', v)}
-      <div class="small muted">${t('Motivo')}: ${esc(reasonIn(LANG, n.reason))}${n.response_note ? ' · “' + esc(n.response_note) + '”' : ''}</div></div>
+      <div class="small muted">${t('Motivo')}: ${esc(reasonIn(LANG, n.reason))}${n.response_note ? ' · “' + trx(n.response_note, n.response_note_tr, n.response_note_from, { inline: true }) + '”' : ''}</div></div>
       <div class="row"><button class="sm primary" data-acc>${t('Aceptar fecha')}</button><button class="sm" data-cl>${t('Descartar')}</button></div></div>`; }).join('')}
     ${waiting.map(n => { const v = noticeLine(n); return `<div class="notice wait" data-id="${n.id}">
       <div>${t('Esperando respuesta de {who}: “{task}” ({place})', v)} ${n.new_date ? `→ ${v.nd}` : `· <i>${t('fecha por definir')}</i>`}</div>
@@ -1343,7 +1367,7 @@ async function workerNoticesCard(box, refresh) {
     ${open.map(n => { const v = noticeLine(n); return `<div class="notice reply" data-id="${n.id}">
       <div><b>${v.task}</b> · ${v.place}${n.address ? ' · ' + esc(n.address) : ''}
         <div>${n.new_date ? t('Nueva fecha: {nd}', v) : `<i>${t('Fecha por definir: diga cuándo puede regresar')}</i>`}</div>
-        <div class="small muted">${t('Motivo')}: ${esc(reasonIn(LANG, n.reason))}${n.note ? ' · “' + esc(n.note) + '”' : ''}</div></div>
+        <div class="small muted">${t('Motivo')}: ${esc(reasonIn(LANG, n.reason))}${n.note ? ' · “' + trx(n.note, n.note_tr, n.note_from, { inline: true }) + '”' : ''}</div></div>
       <div class="row">${n.new_date ? `<button class="sm primary" data-ok>${t('Confirmo')}</button>` : ''}<button class="sm ${n.new_date ? '' : 'primary'}" data-pr>${t('Propongo otra fecha')}</button></div></div>`; }).join('')}
     ${mine.map(n => { const v = noticeLine(n); return `<div class="notice wait small">${t('Usted propuso regresar a “{task}” el {d}. Esperando al dueño.', v)}</div>`; }).join('')}
     ${closed.map(n => { const v = noticeLine(n); return `<div class="notice ok small">${n.resolution === 'aceptado' ? '✓ ' + t('Aceptado: “{task}” queda para el {d}.', v) : t('El dueño no aceptó el cambio de “{task}”. Revise su calendario.', v)}</div>`; }).join('')}`;
@@ -1912,13 +1936,21 @@ function renderFab() {
 const CASE_ST = () => ({ abierto: BOSS() ? t('Abierto') : t('En revisión'), esperando_cliente: ME.role === 'client' ? t('Esperando su respuesta') : t('Esperando al cliente'), resuelto: t('Resuelto') });
 const CASE_BADGE = { abierto: 'b-en_progreso', esperando_cliente: 'b-pendiente', resuelto: 'b-hecho' };
 const fstamp = s => s ? new Date(s.replace(' ', 'T') + 'Z').toLocaleString(LANG === 'en' ? 'en-US' : 'es-MX', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : '';
+// Responsable y fecha límite de un caso, en una línea.
+function caseMeta(c) {
+  if (ME.role === 'client') return '';
+  const who = c.assignee_name ? `📌 ${c.mine ? t('Le toca a usted') : t('Responsable: {x}', { x: esc(c.assignee_name) })}` : (BOSS() ? `<span class="muted">📌 ${t('Sin responsable')}</span>` : '');
+  const due = c.due_date ? `<span class="badge ${c.overdue ? 'b-late' : 'b-pendiente'}">${c.overdue ? t('Vencido') + ' · ' : ''}${t('para el {d}', { d: fdate(c.due_date) })}</span>` : '';
+  return [who, due].filter(Boolean).map(x => `<span>${x}</span>`).join('');
+}
 function caseRows(list, showJob) {
   if (!list.length) return `<p class="empty">${ME.role === 'client' ? t('Si tiene una duda sobre su proyecto, pregúntenos aquí con fotos.') : t('No hay casos. Cuando haya un problema o una duda, ábralo aquí con fotos.')}</p>`;
   return list.map(c => `<div class="case-row ${c.unread ? 'unread' : ''}" data-case="${c.id}">
     <div class="ic">${c.kind === 'pregunta' ? '❓' : '⚠️'}</div>
-    <div style="flex:1;min-width:0"><div class="title">${c.urgent ? `<span class="badge b-urg">${t('Urgente')}</span> ` : ''}${esc(c.title)}</div>
+    <div style="flex:1;min-width:0"><div class="title">${c.urgent ? `<span class="badge b-urg">${t('Urgente')}</span> ` : ''}${esc(c.title_tr || c.title)}${c.title_tr ? ' <span class="small muted" title="' + esc(c.title) + '">🌐</span>' : ''}</div>
       <div class="small muted">${[showJob ? esc(c.client_name) : '', esc(c.by_name), c.last ? fstamp(c.last.at) : ''].filter(Boolean).join(' · ')}</div>
-      ${c.last ? `<div class="small ellip">${c.last.by ? `<b>${esc(c.last.by)}:</b> ` : ''}${esc(c.last.body)}</div>` : ''}</div>
+      ${c.last ? `<div class="small ellip">${c.last.by ? `<b>${esc(c.last.by)}:</b> ` : ''}${esc(c.last.body_tr || c.last.body)}</div>` : ''}
+      ${c.status !== 'resuelto' && (c.assignee_name || c.due_date) ? `<div class="case-plan small">${caseMeta(c)}</div>` : ''}</div>
     <div class="col-end"><span class="badge ${CASE_BADGE[c.status]}">${CASE_ST()[c.status]}</span>${c.unread ? `<span class="dot-new">${c.unread}</span>` : ''}
       ${BOSS() && c.client_visible ? `<span class="small muted">👁 ${t('cliente')}</span>` : ''}</div></div>`).join('');
 }
@@ -1940,11 +1972,35 @@ function photoPicker(el) {
   return () => files.slice();
 }
 
+// "Mis pendientes": lo que le toca a esta persona (casos a su cargo, sin leer o esperando su respuesta, y tareas atrasadas).
+async function myPendingCard(box, after) {
+  let list = [];
+  try { list = await api('GET', '/api/my-pending'); } catch { box.remove(); return; }
+  if (!list.length) { box.className = 'card mypend ok'; box.innerHTML = `<h2>✅ ${t('Mis pendientes')}</h2><p class="small muted">${t('No tiene nada pendiente. Aquí le saldrán los casos a su cargo, los que esperan su respuesta y las tareas atrasadas.')}</p>`; return; }
+  const WHY = { unread: t('Mensaje nuevo'), your_turn: t('Le toca contestar'), assigned: t('A su cargo') };
+  box.className = 'card mypend';
+  box.innerHTML = `<div class="row between"><h2>📌 ${t('Mis pendientes')} <span class="badge b-late">${list.length}</span></h2></div>
+    ${list.slice(0, 12).map(x => `<div class="pend-row" ${x.kind === 'case' ? `data-pcase="${x.id}"` : `data-go="#/obra/${x.job_id}"`}>
+      <span class="ic">${x.kind === 'case' ? (x.urgent ? '🚨' : '💬') : '🗓️'}</span>
+      <div style="flex:1;min-width:0"><b>${esc(x.kind === 'task' ? taskTitle(x.title) : (x.title_tr || x.title))}</b><div class="small muted">${esc(x.job)}${x.who ? ' · ' + esc(x.who) : ''}</div></div>
+      <div class="col-end">${x.kind === 'case' ? `<span class="badge ${x.why === 'assigned' ? 'b-pendiente' : 'b-en_progreso'}">${WHY[x.why]}</span>` : `<span class="badge ${x.overdue ? 'b-late' : 'b-en_progreso'}">${x.overdue ? t('Atrasada') : t('Hoy')}</span>`}
+        ${x.due ? `<span class="small ${x.overdue ? 'neg' : 'muted'}">${x.kind === 'case' && x.overdue ? t('Vencido') + ' · ' : ''}${fdate(x.due)}</span>` : ''}</div></div>`).join('')}
+    ${list.length > 12 ? `<p class="small muted">${t('Y {n} más.', { n: list.length - 12 })}</p>` : ''}`;
+  $$('[data-pcase]', box).forEach(r => { r.onclick = () => openCase(Number(r.dataset.pcase), after); });
+  $$('[data-go]', box).forEach(r => { r.onclick = () => { location.hash = r.dataset.go; }; });
+}
+
 // Abrir un caso nuevo.
 async function newCaseDialog({ jobId, jobs, after }) {
   const isOwner = BOSS(), isClient = ME.role === 'client';
-  let subs = [];
-  if (isOwner && jobId) { try { subs = (await api('GET', `/api/jobs/${jobId}`)).subs.filter(s => s.user_id).map(s => ({ id: s.user_id, name: s.user_name || s.name })); } catch { /* */ } }
+  let people = [];
+  const loadPeople = async jid => { try { people = jid ? await api('GET', `/api/issues-people?job_id=${jid}`) : []; } catch { people = []; } };
+  if (isOwner && jobId) await loadPeople(jobId);
+  const ROLEN = { owner: t('Dueño'), pm: 'PM', worker: t('Sub') };
+  const peopleFields = () => `<div class="field full"><label>${t('Subs en el caso')}</label><div class="pick-people">${people.filter(p => p.role === 'worker').map(p => `<label class="check"><input type="checkbox" name="member" value="${p.id}"> <span>${esc(p.name)}${p.trade ? `<br><span class="small muted">${esc(p.trade)}</span>` : ''}</span></label>`).join('') || `<span class="small muted">${t('Esta obra no tiene subs con acceso a la app.')}</span>`}</div>
+      <div class="small muted">${t('Ven y contestan lo interno del caso. Nunca ven lo que se habla con el cliente.')}</div></div>
+    <div class="field"><label>${t('Responsable')}</label><select name="assignee"><option value="">${t('— sin responsable —')}</option>${people.map(p => `<option value="${p.id}">${esc(p.name)}${p.me ? ' (' + t('yo') + ')' : ''} · ${ROLEN[p.role] || ''}</option>`).join('')}</select></div>
+    <div class="field"><label>${t('Fecha límite')}</label><input type="date" name="due"></div>`;
   const d = document.createElement('dialog');
   d.innerHTML = `<form novalidate><h2>${isClient ? t('Hacer una pregunta') : t('Nuevo caso')}</h2>
     <p class="small muted">${isClient ? t('Explíquenos su duda y mande fotos si ayudan. Le respondemos en la app.')
@@ -1954,8 +2010,8 @@ async function newCaseDialog({ jobId, jobs, after }) {
     ${jobId ? '' : `<div class="field full"><label>${t('Obra')}</label><select name="job_id">${(jobs || []).map(j => `<option value="${j.id}">${esc(j.client_name)}${j.address ? ' — ' + esc(j.address) : ''}</option>`).join('')}</select></div>`}
     ${isClient ? '' : `<div class="field"><label>${t('Tipo')}</label><select name="kind"><option value="problema">⚠️ ${t('Problema u obstáculo')}</option><option value="pregunta">❓ ${t('Pregunta')}</option></select></div>
       <div class="field"><label class="check"><input type="checkbox" name="urgent"> ${t('Urgente: el trabajo está detenido')}</label></div>`}
-    ${isOwner ? `<div class="field full"><label>${t('¿Quién lo ve?')}</label><select name="who"><option value="int">${t('Interno (solo dueños)')}</option>
-      ${subs.map(s => `<option value="w${s.id}">${t('Interno + {x}', { x: esc(s.name) })}</option>`).join('')}<option value="cli">${t('Para el cliente (dueño de la casa)')}</option></select></div>` : ''}
+    ${isOwner ? `<div class="field full"><label>${t('¿Quién lo ve?')}</label><select name="who"><option value="int">${t('Interno (empresa y los subs que elija)')}</option><option value="cli">${t('Para el cliente (dueño de la casa)')}</option></select></div>
+      <div data-people class="fields full" style="grid-column:1/-1">${peopleFields()}</div>` : ''}
     <div class="field full"><label>${t('¿De qué se trata?')} *</label><input name="title" maxlength="140" placeholder="${esc(isClient ? t('Ej.: ¿Este es el color de piedra que escogimos?') : t('Ej.: Tubería de gas donde va la zapata'))}"></div>
     <div class="field full"><label>${t('Explicación')} *</label><textarea name="body" rows="5" placeholder="${esc(isClient ? '' : t('Qué encontró, dónde, qué opciones ve y qué necesita que se decida.'))}"></textarea></div>
     <div class="field full"><label>${t('Fotos')}</label><div data-pp></div></div></div>
@@ -1965,12 +2021,19 @@ async function newCaseDialog({ jobId, jobs, after }) {
   const getPhotos = photoPicker($('[data-pp]', d));
   $('[data-x]', d).onclick = () => d.close();
   d.addEventListener('close', () => d.remove());
+  if (isOwner && !jobId) {
+    const sel = $('[name=job_id]', d);
+    const refresh = async () => { await loadPeople(Number(sel.value)); $('[data-people]', d).innerHTML = peopleFields(); };
+    sel.onchange = refresh; refresh();
+  }
   $('form', d).onsubmit = async e => {
     e.preventDefault();
     const f = e.target, btn = $('button[type=submit]', d);
     const who = f.who ? f.who.value : '';
+    const memberIds = $$('[name=member]:checked', d).map(x => Number(x.value));
     const body = { job_id: jobId || Number(f.job_id.value), title: f.title.value, body: f.body.value, kind: f.kind ? f.kind.value : 'pregunta', urgent: f.urgent ? f.urgent.checked : false,
-      photos: getPhotos(), worker_id: who.startsWith('w') ? Number(who.slice(1)) : undefined, to_client: who === 'cli' };
+      photos: getPhotos(), member_ids: isOwner ? memberIds : undefined, assignee_id: isOwner && f.assignee && f.assignee.value ? Number(f.assignee.value) : undefined,
+      due_date: isOwner && f.due ? f.due.value : undefined, to_client: who === 'cli' };
     btn.disabled = true;
     try {
       const c = await api('POST', '/api/issues', body);
@@ -1997,9 +2060,9 @@ async function caseShare(c, visibility, title) {
         text: tl(l, 'Elevated Exteriors: tenemos algo que comentarle sobre su proyecto: “{x}”. Véalo con fotos en la app: {url}', { x: title || full.title, url: appUrl() })
           + (full.client.has_portal ? '' : ' ' + tl(l, '(Pídanos su acceso a la app si aún no lo tiene.)')) });
     }
-    if (visibility === 'interno' && full.worker) {
-      const l = full.worker.lang || 'es';
-      people.push({ name: full.worker.name, phone: full.worker.phone, lang: l, text: tl(l, 'Elevated Exteriors: hay una respuesta sobre “{x}” en {job}. Véala en la app: {url}', { x: title || full.title, job: full.client_name, url: appUrl() }) });
+    if (visibility === 'interno') for (const w of (full.workers || (full.worker ? [full.worker] : []))) {
+      const l = w.lang || 'es';
+      people.push({ name: w.name, phone: w.phone, lang: l, text: tl(l, 'Elevated Exteriors: hay una respuesta sobre “{x}” en {job}. Véala en la app: {url}', { x: title || full.title, job: full.client_name, url: appUrl() }) });
     }
   }
   if (!people.length) return;
@@ -2021,15 +2084,17 @@ async function openCase(id, after) {
   const d = document.createElement('dialog'); d.className = 'case-dlg';
   const allPhotos = c.messages.flatMap(m => m.visibility === 'interno' ? m.photos : []);
   const draw = () => {
-    d.innerHTML = `<form novalidate><div class="row between"><h2 style="margin:0">${c.kind === 'pregunta' ? '❓' : '⚠️'} ${esc(c.title)}</h2><span class="badge ${CASE_BADGE[c.status]}">${CASE_ST()[c.status]}</span></div>
-      <div class="small muted">${esc(c.client_name)}${c.urgent ? ' · <b>' + t('Urgente') + '</b>' : ''}${isOwner ? ' · ' + (c.worker_name ? t('Con {x}', { x: esc(c.worker_name) }) : t('Sin sub')) + (c.client_visible ? ' · 👁 ' + t('el cliente lo ve') : ' · 🔒 ' + t('el cliente no lo ve')) : ''}</div>
+    d.innerHTML = `<form novalidate><div class="row between"><h2 style="margin:0">${c.kind === 'pregunta' ? '❓' : '⚠️'} ${esc(c.title_tr || c.title)}</h2><span class="badge ${CASE_BADGE[c.status]}">${CASE_ST()[c.status]}</span></div>
+      <div class="small muted">${esc(c.client_name)}${c.urgent ? ' · <b>' + t('Urgente') + '</b>' : ''}${isOwner ? (c.client_visible ? ' · 👁 ' + t('el cliente lo ve') : ' · 🔒 ' + t('el cliente no lo ve')) : ''}</div>
+      ${ME.role !== 'client' ? `<div class="case-plan">${caseMeta(c)}
+        ${(c.members || []).length ? `<span>👥 ${c.members.map(m => esc(m.name)).join(', ')}</span>` : isOwner ? `<span class="muted">👥 ${t('Sin subs en el caso')}</span>` : ''}</div>` : ''}
       ${c.status === 'resuelto' && c.decision && ME.role !== 'client' ? `<div class="decision">✔ <b>${t('Decisión')}:</b> ${esc(c.decision)}</div>` : ''}
       <div class="thread">${c.messages.map(m => `<div class="msg-b ${m.mine ? 'mine' : ''} ${m.visibility === 'cliente' && isOwner ? 'to-client' : ''}">
         <div class="small muted">${esc(m.by)} · ${fstamp(m.at)}${isOwner ? ` · ${m.visibility === 'cliente' ? '👁 ' + t('para el cliente') : '🔒 ' + t('interno')}` : ''}</div>
-        ${m.body ? `<div class="txt">${esc(m.body)}</div>` : ''}
+        ${m.body ? `<div class="txt">${trx(m.body, m.body_tr, m.body_from)}</div>` : ''}
         ${m.photos.length ? `<div class="pp">${m.photos.map(p => `<span class="thumb"><img src="/files/${p}" data-view="${p}" alt="" loading="lazy"></span>`).join('')}</div>` : ''}</div>`).join('')}</div>
       <div class="compose">
-        ${isOwner ? `<div class="row seg"><label><input type="radio" name="vis" value="interno" checked> 🔒 ${t('Interno')}${c.worker_name ? ' (+ ' + esc(c.worker_name) + ')' : ''}</label>
+        ${isOwner ? `<div class="row seg"><label><input type="radio" name="vis" value="interno" checked> 🔒 ${t('Interno')}${(c.members || []).length ? ' (+ ' + c.members.map(m => esc(m.name)).join(', ') + ')' : ''}</label>
           <label><input type="radio" name="vis" value="cliente"> 👁 ${t('Para el cliente')}</label></div>
           <div data-cli hidden class="small">
             ${allPhotos.length ? `<div>${t('Fotos del caso que el cliente puede ver:')}</div><div class="pp">${allPhotos.map(p => `<label class="thumb pick"><img src="/files/${p}" alt=""><input type="checkbox" name="share" value="${p}"></label>`).join('')}</div>` : ''}
@@ -2038,7 +2103,7 @@ async function openCase(id, after) {
         <textarea name="body" rows="3" placeholder="${esc(t('Escriba su mensaje…'))}"></textarea>
         <div data-pp></div>
         <p class="error-msg" hidden></p>
-        <div class="foot">${isOwner ? (c.status === 'resuelto' ? `<button type="button" data-reopen>${t('Reabrir')}</button>` : `<button type="button" data-resolve>✔ ${t('Cerrar con decisión')}</button>`) + `<button type="button" data-sub>${t('Sub')}</button>` : ''}
+        <div class="foot">${isOwner ? (c.status === 'resuelto' ? `<button type="button" data-reopen>${t('Reabrir')}</button>` : `<button type="button" data-resolve>✔ ${t('Cerrar con decisión')}</button>`) + `<button type="button" data-plan>📌 ${t('Responsable y fecha')}</button><button type="button" data-sub>👥 ${t('Subs')}</button>` : ''}
           <button type="button" data-x>${t('Cerrar')}</button><button class="primary" type="submit">${t('Enviar')}</button></div></div></form>`;
     bindPhotoViews(d);
     const getPhotos = photoPicker($('[data-pp]', d));
@@ -2064,11 +2129,32 @@ async function openCase(id, after) {
         onSubmit: v => api('POST', `/api/issues/${id}/resolve`, v) })) { toast(t('Caso cerrado')); c = await api('GET', `/api/issues/${id}`); draw(); }
     };
     const ro = $('[data-reopen]', d); if (ro) ro.onclick = async () => { await act(() => api('POST', `/api/issues/${id}/reopen`)); c = await api('GET', `/api/issues/${id}`); draw(); };
+    const pl = $('[data-plan]', d); if (pl) pl.onclick = async () => {
+      let people = []; try { people = await api('GET', `/api/issues-people?job_id=${c.job_id}`); } catch { /* */ }
+      const ROLEN = { owner: t('Dueño'), pm: 'PM', worker: t('Sub') };
+      if (await formDialog({ title: t('Responsable y fecha límite'), intro: `<p class="small muted">${t('El responsable recibe el aviso y los recordatorios si el caso se queda sin respuesta. Si es un sub, entra al caso.')}</p>`, fields: [
+        { name: 'assignee_id', label: t('Responsable'), type: 'select', value: c.assignee_id || '', options: [['', t('— sin responsable —')], ...people.map(p => [p.id, `${p.name}${p.me ? ' (' + t('yo') + ')' : ''} · ${ROLEN[p.role] || ''}`])] },
+        { name: 'due_date', label: t('Fecha límite'), type: 'date', value: c.due_date || '' }],
+        onSubmit: v => api('PUT', `/api/issues/${id}/plan`, { assignee_id: v.assignee_id ? Number(v.assignee_id) : null, due_date: v.due_date || '' }) })) { toast(t('Guardado')); c = await api('GET', `/api/issues/${id}`); draw(); }
+    };
     const sb = $('[data-sub]', d); if (sb) sb.onclick = async () => {
-      let subs = []; try { subs = (await api('GET', `/api/jobs/${c.job_id}`)).subs.filter(s => s.user_id); } catch { /* */ }
-      if (await formDialog({ title: t('¿Qué sub participa en este caso?'), intro: `<p class="small muted">${t('Ese sub verá los mensajes internos del caso (nunca lo que se habla con el cliente).')}</p>`, fields: [
-        { name: 'worker_id', label: t('Sub'), type: 'select', value: c.worker_id || '', options: [['', t('Ninguno')], ...subs.map(s => [s.user_id, s.user_name || s.name])] }],
-        onSubmit: v => api('POST', `/api/issues/${id}/worker`, { worker_id: v.worker_id ? Number(v.worker_id) : null }) })) { c = await api('GET', `/api/issues/${id}`); draw(); }
+      let people = []; try { people = (await api('GET', `/api/issues-people?job_id=${c.job_id}`)).filter(p => p.role === 'worker'); } catch { /* */ }
+      const now = new Set((c.members || []).map(m => m.id));
+      const dd = document.createElement('dialog');
+      dd.innerHTML = `<form novalidate><h2>${t('Subs en este caso')}</h2><p class="small muted">${t('Ven y contestan los mensajes internos del caso (nunca lo que se habla con el cliente). Les llega un aviso al agregarlos.')}</p>
+        <div class="pick-people">${people.map(p => `<label class="check"><input type="checkbox" value="${p.id}" ${now.has(p.id) ? 'checked' : ''}> <span>${esc(p.name)}${p.trade ? `<br><span class="small muted">${esc(p.trade)}</span>` : ''}</span></label>`).join('') || `<p class="empty">${t('Esta obra no tiene subs con acceso a la app.')}</p>`}</div>
+        <p class="error-msg" hidden></p><div class="foot"><button type="button" data-x>${t('Cancelar')}</button><button class="primary" type="submit">${t('Guardar')}</button></div></form>`;
+      document.body.appendChild(dd); dd.addEventListener('close', () => dd.remove()); $('[data-x]', dd).onclick = () => dd.close();
+      $('form', dd).onsubmit = async e => {
+        e.preventDefault();
+        const want = new Set($$('input[type=checkbox]:checked', dd).map(x => Number(x.value)));
+        try {
+          for (const uid of want) if (!now.has(uid)) await api('POST', `/api/issues/${id}/members`, { user_id: uid });
+          for (const uid of now) if (!want.has(uid)) await api('DELETE', `/api/issues/${id}/members/${uid}`);
+          dd.close(); toast(t('Guardado')); c = await api('GET', `/api/issues/${id}`); draw();
+        } catch (err) { const m = $('.error-msg', dd); m.hidden = false; m.textContent = err.message; }
+      };
+      dd.showModal();
     };
   };
   draw();
@@ -2162,7 +2248,7 @@ async function tabPermits(box, d, { id, reload }) {
 // ---------- 5) Reporte diario ----------
 function logCard(l, owner) {
   return `<div class="log" data-id="${l.id}"><div class="row between"><b>${fdate(l.date)}</b><span class="small muted">${[l.weather, l.crew && '👷 ' + esc(l.crew)].filter(Boolean).join(' · ')}${owner && !l.shared ? ' · 🔒 ' + t('no compartido') : ''}</span></div>
-    ${l.client_notes ? `<div class="txt">${esc(l.client_notes)}</div>` : ''}
+    ${l.client_notes ? `<div class="txt">${trx(l.client_notes, l.client_notes_tr, l.client_notes_from)}</div>` : ''}
     ${owner && l.internal_notes ? `<div class="small muted">🔒 ${esc(l.internal_notes)}</div>` : ''}
     ${l.photos.length ? `<div class="pp">${l.photos.map(p => `<span class="thumb"><img src="/files/${p}" data-view="${p}" alt="" loading="lazy"></span>`).join('')}</div>` : ''}
     ${owner ? `<div class="row" style="justify-content:flex-end"><button class="sm danger" data-del>✕</button></div>` : ''}</div>`;
@@ -2422,7 +2508,7 @@ async function clientProCards(app, j, reload) {
   if (s.estimate.can_sign) html += `<div class="card sign-card"><h2>✍️ ${t('Su estimado está listo para firmar')}</h2><p>${t('Revise el estimado y fírmelo desde aquí. Total')}: <b>${fmt(s.estimate.amount_cents)}</b></p>
     <div class="row"><a class="btn" target="_blank" rel="noopener" href="/api/jobs/${j.id}/pdf?lang=${LANG}">📄 ${t('Ver estimado')}</a><button class="primary" data-sign-est>✍️ ${t('Firmar estimado')}</button></div></div>`;
   else if (s.estimate.signature && s.estimate.signature.valid) html += `<div class="card small">✅ ${t('Estimado firmado por {x} el {d}', { x: esc(s.estimate.signature.signer_name), d: fdayLocal(s.estimate.signature.signed_at) })}</div>`;
-  if (pendCO.length) html += `<div class="card sign-card"><h2>✍️ ${t('Change orders por aprobar')}</h2>${pendCO.map(c => `<div class="notice"><span><b>${esc(c.description)}</b><br><span class="small">${fmt(c.price_cents)}</span></span><button class="sm primary" data-sign-co="${c.id}">✍️ ${t('Aprobar y firmar')}</button></div>`).join('')}</div>`;
+  if (pendCO.length) html += `<div class="card sign-card"><h2>✍️ ${t('Change orders por aprobar')}</h2>${pendCO.map(c => `<div class="notice"><span><b>${esc(c.description_tr || c.description)}</b><br><span class="small">${fmt(c.price_cents)}</span></span><button class="sm primary" data-sign-co="${c.id}">✍️ ${t('Aprobar y firmar')}</button></div>`).join('')}</div>`;
   if (s.pay && (s.pay.link || s.pay.info) && s.pay.balance_cents > 0 && !['prospecto', 'cotizado'].includes(j.status)) html += `<div class="card"><h2>💳 ${t('Pagar')}</h2><p>${t('Saldo pendiente')}: <b>${fmt(s.pay.balance_cents)}</b></p>
     ${s.pay.link ? `<p><a class="btn primary" target="_blank" rel="noopener" href="${esc(s.pay.link)}">💳 ${t('Pagar en línea')}</a></p>` : ''}${s.pay.info ? `<p class="small" style="white-space:pre-wrap">${esc(s.pay.info)}</p>` : ''}
     <p class="small muted">${t('Su pago aparece en "Pagos" cuando lo confirmemos.')}</p></div>`;
@@ -2735,7 +2821,8 @@ async function viewPmHome(app) {
     <div></div><div></div><div></div><div></div><div></div><div></div><div></div>`;
   const [rq, nb, db2, cs, sc, note, sal] = [...app.children].slice(2);
   app.insertBefore(note, app.children[1]); app.insertBefore(sal, app.children[2]);
-  await Promise.all([pmNoteCard(note), salesHomeCard(sal),pmRequestsCard(rq), ownerNoticesCard(nb, () => viewPmHome(app)), ownerDocsCard(db2, () => viewPmHome(app)),
+  const mp = document.createElement('div'); app.insertBefore(mp, app.children[1]);
+  await Promise.all([myPendingCard(mp, () => viewPmHome(app)), pmNoteCard(note), salesHomeCard(sal),pmRequestsCard(rq), ownerNoticesCard(nb, () => viewPmHome(app)), ownerDocsCard(db2, () => viewPmHome(app)),
     casesCard(cs, { title: '⚠️ ' + t('Casos abiertos'), onlyOpen: true, showJob: true, after: () => viewPmHome(app) }), ownerScansCard(sc, () => viewPmHome(app))].map(p => p.catch(e => console.error(e))));
   const anchor = app.firstElementChild;
   const jobs = await api('GET', '/api/jobs');

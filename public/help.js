@@ -143,16 +143,39 @@ const HELP = [
       'Tap a task → "Reschedule" and enter the new date (or leave it empty so the sub proposes when they can).',
       'Write the reason: the sub gets a notice and replies if they can; the client is notified without the internal reason.',
       'Check "Also move the following tasks" to shift the whole plan by the same days.']] },
+  { id: 'translate', roles: ['owner', 'pm', 'worker', 'client'], icon: '🌐', screens: ['#/casos', '#/obra', '#/', '#/textos'],
+    es: ['Traducción automática (español ↔ inglés)', [
+      'Escriba en su idioma. Si la otra persona usa la app en el otro idioma, lo lee traducido solo.',
+      'Debajo de un mensaje traducido dice "🌐 Traducido del inglés · Ver original". Tóquelo para ver lo que la persona escribió de verdad.',
+      'Se traduce lo que escribe la gente en casos, avisos de atraso, notas del día, novedades y reportes al cliente, change orders que ve el cliente y textos.',
+      'Dueño o PM: en Textos, la casilla "Si la persona habla otro idioma, mandárselo traducido" manda el texto en el idioma de quien lo recibe y guarda lo que usted escribió.',
+      'Dueño o PM: el idioma de cada persona es el que eligió en ES | EN (o en Equipo y accesos). La traducción usa la misma clave que la lectura de tickets.']],
+    en: ['Automatic translation (Spanish ↔ English)', [
+      'Write in your language. If the other person uses the app in the other language, they read it translated automatically.',
+      'Under a translated message it says "🌐 Translated from Spanish · See original". Tap it to see what the person actually wrote.',
+      'It translates what people write in cases, delay notices, daily notes, client updates and reports, change orders the client sees, and texts.',
+      'Owner or PM: in Texts, the "If the person speaks another language, send it translated" box sends the text in the recipient\'s language and keeps what you wrote.',
+      'Owner or PM: each person\'s language is the one they chose with ES | EN (or in Team and access). Translation uses the same key as receipt reading.']] },
   { id: 'cases', roles: ['owner', 'pm', 'worker', 'client'], icon: '⚠️', screens: ['#/casos', '#/obra', '#/'],
     es: ['Casos: problemas y preguntas con fotos', [
       'Sub: en su obra toque "⚠️ Reportar problema", explique y mande fotos. Solo lo ve la empresa.',
       'Cliente: en su portal toque "Hacer una pregunta".',
       'Dueño o PM: responda dentro del caso. Cada mensaje es 🔒 Interno o 👁 Para el cliente.',
+      'Dueño o PM: al abrir un caso elija los subs que participan (pueden ser varios), el responsable y la fecha límite. En un caso abierto: botones "📌 Responsable y fecha" y "👥 Subs".',
+      'Dueño o PM: si un sub o el cliente abre un caso, queda a cargo del encargado de la obra (un PM o un dueño, en Editar obra → "Project manager a cargo"). Al responsable le llega el aviso.',
+      'Dueño o PM: si nadie contesta en 24 horas (4 si es urgente), la app le recuerda a quien le toca contestar; si sigue sin respuesta otro tanto, avisa a los dueños. Si se pasa la fecha límite, avisa al responsable y a los dueños. Los avisos solo salen de 7 a.m. a 8 p.m.',
+      'Sub: si lo agregan a un caso le llega un aviso; puede leer y contestar lo interno. En "Mis pendientes" (arriba en Mis obras) ve lo que espera su respuesta.',
+      'Dueño o PM: "Mis pendientes" arriba en Inicio junta los casos a su cargo, los que esperan su respuesta, los mensajes nuevos y (PM) las tareas atrasadas.',
       'Al cerrar, escriba la decisión. Las fotos de un caso no se borran: son el historial.']],
     en: ['Cases: problems and questions with photos', [
       'Sub: in your job tap "⚠️ Report a problem", explain and send photos. Only the company sees it.',
       'Client: in your portal tap "Ask a question".',
       'Owner or PM: reply inside the case. Each message is 🔒 Internal or 👁 For the client.',
+      'Owner or PM: when opening a case, pick the subs who take part (can be several), the person in charge and the due date. In an open case: "📌 Owner and due date" and "👥 Subs" buttons.',
+      'Owner or PM: if a sub or the client opens a case, the job\'s manager is put in charge (a PM or an owner, in Edit job → "Project manager in charge"). The person in charge gets the alert.',
+      'Owner or PM: if nobody answers in 24 hours (4 if urgent), the app reminds whoever has to answer; if it is still unanswered after the same time, it alerts the owners. If the due date passes, it alerts the person in charge and the owners. Alerts only go out 7 a.m. to 8 p.m.',
+      'Sub: if you are added to a case you get an alert; you can read and answer the internal part. "My to-dos" (top of My jobs) shows what is waiting for your answer.',
+      'Owner or PM: "My to-dos" at the top of Home gathers cases in your charge, cases waiting for your answer, new messages and (PM) late tasks.',
       'When closing, write the decision. Case photos are never deleted: they are the record.']] },
   { id: 'daily', roles: ['owner', 'pm', 'worker'], icon: '📸', screens: ['#/obra'],
     es: ['Fotos, reporte diario y permisos', [
@@ -455,6 +478,7 @@ async function viewHelp(app, from) {
     ${here.length ? `<h2 class="help-h">📍 ${hx('Sobre la pantalla donde estaba', 'About the screen you were on')}</h2>${here.map((h, i) => card(h, i < 2)).join('')}<h2 class="help-h">${hx('Todos los temas', 'All topics')}</h2>` : ''}
     <div id="hl">${all.filter(h => !here.includes(h)).map(h => card(h, false)).join('')}</div>
     <p id="hnone" class="empty" hidden>${hx('No encontramos ese tema. Pregúntele a los dueños de la empresa.', 'No topic found. Ask the company owners.')}</p>
+    <p class="small muted" style="text-align:center">${hx('Versión de la app', 'App version')}: <b>${esc(window.APP_VERSION || '—')}</b></p>
     <div class="card small muted">${ME.role === 'owner' ? hx('La guía completa con todos los detalles está en el archivo LEEME.md que viene con la app.', 'The full guide with all details is in the LEEME.md file that comes with the app.')
       : hx('¿Sigue con dudas? Escríbale a su contacto en la empresa.', 'Still have questions? Message your contact at the company.')}</div>`;
   $('#hq', app).oninput = e => {
