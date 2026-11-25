@@ -36,5 +36,5 @@ test('cada mensaje de error del servidor tiene inglés', () => {
 
 test('catálogo y plantillas en los dos idiomas', () => {
   for (const list of [C.CATEGORIES, C.JOB_STATUS, C.PROJECT_TYPES]) for (const x of list) assert.ok(x.es && x.en, x.key);
-  for (const p of C.PROJECT_TYPES) for (const pair of p.tasks) assert.ok(pair.length === 2 && pair[0] && pair[1], p.key);
+  for (const p of C.PROJECT_TYPES) for (const t of p.tasks) assert.ok(t[0] && t[1] && (t[4] || t[2] === '' || require('../lib/trades').tradeOk(t[2])), p.key);
 });

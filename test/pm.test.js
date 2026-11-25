@@ -30,13 +30,13 @@ async function start() {
   const subId = await mkUser('Pedro', 'worker');
   const otherSub = await mkUser('Luis', 'worker');
   const cliId = await mkUser('Cliente', 'client');
-  const job = (await owner.post('/api/jobs', { client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
+  const job = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
   await owner.put(`/api/jobs/${job.id}`, { client_user_id: cliId });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Pedro', trade: 'concreto', agreed_cents: 100000, user_id: subId });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Luis', trade: 'eléctrico', agreed_cents: 100000, user_id: otherSub });
   const as = async u => { const c = client(); await c.post('/api/login', { username: u, password: 'otra-clave-larga-1' }); return c; };
   const pmId = await mkUser('Mario', 'pm');
-  const other = (await owner.post('/api/jobs', { client_name: 'Otra obra', status: 'activo' })).body;
+  const other = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Otra obra', status: 'activo' })).body;
   await owner.put(`/api/jobs/${job.id}`, { pm_id: pmId });
   await owner.put(`/api/users/${otherSub}`, { related_pm_id: pmId }); // Luis es familiar de Mario
   return { srv, dir, owner, job, other, sub: await as('pedro'), luis: await as('luis'), cli: await as('cliente'), pm: await as('mario'), subId, pmId, otherSub, client };
@@ -60,7 +60,7 @@ test('PM: solo ve sus obras y no entra a lo de la empresa', async () => {
     assert.ok(users.every(u => ['worker', 'pm'].includes(u.role)), 'solo ve subs/PMs');
     assert.equal((await pm.get('/api/status')).body.user.role, 'pm');
     // Crea un prospecto: queda asignado a él
-    const nj = (await pm.post('/api/jobs', { client_name: 'Prospecto de Mario' })).body;
+    const nj = (await pm.post('/api/jobs', { template: 'base',  client_name: 'Prospecto de Mario' })).body;
     assert.equal((await pm.get(`/api/jobs/${nj.id}`)).status, 200);
   } finally { srv.close(); }
 });

@@ -30,7 +30,7 @@ async function start() {
   const jack = await mk('Jack', 'owner');
   const pedro = await mk('Pedro', 'worker'), luis = await mk('Luis', 'worker'), ana = await mk('Ana', 'worker');
   const mario = await mk('Mario', 'pm', { pm_limit_cents: 50000, pm_month_cents: 500000 });
-  const job = (await owner.post('/api/jobs', { client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
+  const job = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
   await owner.put(`/api/jobs/${job.id}`, { pm_id: mario });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Pedro', trade: 'Carpintería', agreed_cents: 100000, user_id: pedro });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Luis', trade: 'Electricidad', agreed_cents: 100000, user_id: luis });
@@ -180,7 +180,7 @@ test('un dueño puede ser el encargado (PM) de una obra: le tocan los casos y la
     assert.ok(mine.some(x => x.kind === 'case' && x.id === c.id), 'el caso le sale a Jack');
     assert.ok(mine.some(x => x.kind === 'task' && x.who === 'Pedro'), 'y las tareas atrasadas de su obra');
     // Y una obra nueva se puede crear ya con un dueño como encargado.
-    assert.equal((await owner.post('/api/jobs', { client_name: 'Lee', address: '2 Oak', pm_id: ids.jack })).status, 200);
-    assert.equal((await owner.post('/api/jobs', { client_name: 'Lee', address: '2 Oak', pm_id: ids.luis })).status, 400);
+    assert.equal((await owner.post('/api/jobs', { template: 'base',  client_name: 'Lee', address: '2 Oak', pm_id: ids.jack })).status, 200);
+    assert.equal((await owner.post('/api/jobs', { template: 'base',  client_name: 'Lee', address: '2 Oak', pm_id: ids.luis })).status, 400);
   } finally { srv.close(); }
 });

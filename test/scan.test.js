@@ -36,6 +36,8 @@ function client() {
 }
 const owner = client(), crew = client(), crew2 = client(), cli = client();
 let j1, j2, j3;
+// v2.31: la AI solo propone; una persona confirma con un toque.
+const confirm = async (k, sc) => (await k.post(`/api/scans/${sc.id}/file`, { job_id: sc.job_id, amount_cents: sc.data.total_cents, date: sc.data.date, vendor: sc.data.vendor, category: sc.data.category || 'material' })).data;
 const spent = async id => (await owner.get(`/api/jobs/${id}`)).data.money.spent;
 
 test('preparación', async () => {
@@ -44,9 +46,9 @@ test('preparación', async () => {
   const w2 = (await owner.post('/api/users', { name: 'Luis', username: 'luis', password: 'contrasena-luis', role: 'worker' })).data.id;
   const c = (await owner.post('/api/users', { name: 'C', username: 'cli1', password: 'contrasena-cli1', role: 'client' })).data.id;
   for (const [k, u] of [[crew, 'pedro'], [crew2, 'luis'], [cli, 'cli1']]) await k.post('/api/login', { username: u, password: 'contrasena-' + u });
-  j1 = (await owner.post('/api/jobs', { client_name: 'Robert Thompson', address: '4512 Cross Timbers Rd, Flower Mound, TX', project_type: 'patio_cover', status: 'activo' })).data.id;
-  j2 = (await owner.post('/api/jobs', { client_name: 'Maria Gonzalez', address: '88 Oak Hollow Ln, Argyle, TX', project_type: 'fire_pit', status: 'activo' })).data.id;
-  j3 = (await owner.post('/api/jobs', { client_name: 'Kim', address: '9 Elm St', project_type: 'otro', status: 'activo' })).data.id;
+  j1 = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Robert Thompson', address: '4512 Cross Timbers Rd, Flower Mound, TX', project_type: 'patio_cover', status: 'activo' })).data.id;
+  j2 = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Maria Gonzalez', address: '88 Oak Hollow Ln, Argyle, TX', project_type: 'fire_pit', status: 'activo' })).data.id;
+  j3 = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Kim', address: '9 Elm St', project_type: 'otro', status: 'activo' })).data.id;
   await owner.put(`/api/jobs/${j1}`, { client_user_id: c });
   const t1 = (await owner.get(`/api/jobs/${j1}`)).data.tasks, t2 = (await owner.get(`/api/jobs/${j2}`)).data.tasks;
   await owner.put(`/api/tasks/${t1[0].id}`, { assignee_id: w }); await owner.put(`/api/tasks/${t2[0].id}`, { assignee_id: w });
@@ -60,11 +62,14 @@ test('el lector valida lo que regresa la IA', () => {
   assert.throws(() => parseResult('no json'));
 });
 
-test('con el código de obra en el ticket se guarda solo en esa obra', async () => {
+test('con el código de obra en el ticket se sugiere esa obra; la AI no guarda sola', async () => {
   const before = await spent(j2);
-  const r = await owner.post('/api/scans', { file: JPG({ vendor: 'The Home Depot', date: '2026-11-18', total_cents: 48720, items: ['Concreto 80lb x 10'], job_hint: `JOB: EE-${String(j2).padStart(4, '0')}` }) });
-  assert.equal(r.status, 200);
-  assert.equal(r.data.status, 'guardado'); assert.equal(r.data.job_id, j2); assert.equal(r.data.why, 'codigo');
+  const r0 = await owner.post('/api/scans', { file: JPG({ vendor: 'The Home Depot', date: '2026-11-18', total_cents: 48720, items: ['Concreto 80lb x 10'], job_hint: `JOB: EE-${String(j2).padStart(4, '0')}` }) });
+  assert.equal(r0.status, 200);
+  assert.equal(r0.data.status, 'por_asignar'); assert.equal(r0.data.job_id, j2); assert.equal(r0.data.why, 'codigo');
+  assert.equal(await spent(j2), before, 'nada se registra hasta que alguien confirma');
+  const r = { data: await confirm(owner, r0.data) };
+  assert.equal(r.data.status, 'guardado');
   assert.equal(await spent(j2), before + 48720, 'el gasto ya está en la obra');
   const e = (await owner.get(`/api/jobs/${j2}`)).data.expenses.find(x => x.id === r.data.expense_id);
   assert.equal(e.vendor, 'The Home Depot'); assert.ok(e.receipt_id, 'con la foto como recibo');
@@ -72,7 +77,8 @@ test('con el código de obra en el ticket se guarda solo en esa obra', async () 
 
 test('por la dirección de entrega también se reconoce la obra', async () => {
   const r = await owner.post('/api/scans', { file: JPG({ vendor: '84 Lumber', date: '2026-11-17', total_cents: 220000, job_hint: 'Deliver to: 4512 CROSS TIMBERS RD' }) });
-  assert.equal(r.data.status, 'guardado'); assert.equal(r.data.job_id, j1); assert.equal(r.data.why, 'direccion');
+  assert.equal(r.data.status, 'por_asignar'); assert.equal(r.data.job_id, j1); assert.equal(r.data.why, 'direccion');
+  assert.equal((await confirm(owner, r.data)).status, 'guardado');
 });
 
 test('si solo hay una pista débil (nombre del cliente), se queda por asignar con la obra sugerida', async () => {
@@ -86,9 +92,17 @@ test('si solo hay una pista débil (nombre del cliente), se queda por asignar co
   assert.equal((await owner.post(`/api/scans/${r.data.id}/file`, { job_id: j2, amount_cents: 1 })).status, 400, 'no se guarda dos veces');
 });
 
-test('el trabajador con una sola obra activa: se guarda solo en esa obra', async () => {
+test('el trabajador con una sola obra activa: se sugiere esa obra y queda por revisar', async () => {
   const r = await crew2.post('/api/scans', { file: JPG({ vendor: 'Ace', date: '2026-11-15', total_cents: 3150 }) });
-  assert.equal(r.data.status, 'guardado'); assert.equal(r.data.job_id, j3); assert.equal(r.data.why, 'unica');
+  assert.equal(r.data.status, 'por_asignar'); assert.equal(r.data.job_id, j3); assert.equal(r.data.why, 'unica');
+  const f = await confirm(crew2, r.data);
+  assert.equal(f.status, 'guardado');
+  const rev = (await owner.get('/api/expenses/review')).data;
+  const mine = rev.find(e => e.id === f.expense_id);
+  assert.ok(mine, 'el gasto del trabajador queda por revisar');
+  assert.equal((await crew2.get('/api/expenses/review')).status, 403, 'el trabajador no ve la lista');
+  assert.equal((await owner.post(`/api/expenses/${mine.id}/reviewed`)).data.ok, true);
+  assert.ok(!(await owner.get('/api/expenses/review')).data.some(e => e.id === mine.id));
   assert.equal((await crew2.get(`/api/jobs/${j3}`)).data.money, undefined, 'y sigue sin ver dinero');
 });
 
@@ -104,7 +118,8 @@ test('el trabajador con dos obras y sin pistas: por asignar, solo entre sus obra
 
 test('escanear desde la obra la asigna directo', async () => {
   const r = await crew.post('/api/scans', { file: JPG({ vendor: 'Ferguson', date: '2026-11-14', total_cents: 15500 }), job_id: j2 });
-  assert.equal(r.data.status, 'guardado'); assert.equal(r.data.job_id, j2);
+  assert.equal(r.data.status, 'por_asignar'); assert.equal(r.data.job_id, j2);
+  assert.equal((await confirm(crew, r.data)).status, 'guardado');
   assert.equal((await crew2.post('/api/scans', { file: JPG({ total_cents: 1 }), job_id: j1 })).status, 404, 'no en obra ajena');
 });
 
@@ -126,7 +141,8 @@ test('sin lectura (o si falla), queda por asignar para llenarlo a mano; nada se 
 });
 
 test('mover a otra obra si se archivó mal; permisos', async () => {
-  const r = await owner.post('/api/scans', { file: JPG({ vendor: '84 Lumber', date: '2026-11-13', total_cents: 77700, job_hint: '4512 Cross Timbers' }) });
+  const r0 = await owner.post('/api/scans', { file: JPG({ vendor: '84 Lumber', date: '2026-11-13', total_cents: 77700, job_hint: '4512 Cross Timbers' }) });
+  const r = { data: await confirm(owner, r0.data) };
   const a = await spent(j1), b = await spent(j2);
   const m = await owner.post(`/api/scans/${r.data.id}/move`, { job_id: j2 });
   assert.equal(m.data.job_id, j2);

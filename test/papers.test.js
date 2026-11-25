@@ -20,7 +20,7 @@ test('papeles de subs: W-9, seguro con aviso, waiver por pago, 1099 con umbral d
   try {
     await call('POST', '/api/setup', { name: 'Glaiber', username: 'glaiber', password: 'una-clave-larga-1' });
     await call('POST', '/api/login', { username: 'glaiber', password: 'una-clave-larga-1' });
-    const job = (await call('POST', '/api/jobs', { client_name: 'Smith', address: '1 Main', status: 'activo' })).body;
+    const job = (await call('POST', '/api/jobs', { template: 'base',  client_name: 'Smith', address: '1 Main', status: 'activo' })).body;
     const s1 = (await call('POST', `/api/jobs/${job.id}/subs`, { name: 'Express Electric', trade: 'Electricidad', agreed_cents: 500000 })).body;
     const s2 = (await call('POST', `/api/jobs/${job.id}/subs`, { name: 'Olivas Construction', trade: 'Estructura', agreed_cents: 300000 })).body;
     const y = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date()).slice(0, 4);

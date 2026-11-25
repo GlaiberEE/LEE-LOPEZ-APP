@@ -33,8 +33,8 @@ test('por hora: tiempo extra después de 40 h, gasto en cada obra, nómina pagad
     const ws = (await T.owner.get('/api/labor/workers')).body;
     assert.equal(ws.find(x => x.id === w.id).pay_type, 'hora'); assert.equal(ws.find(x => x.id === w.id).rate_cents, 2000);
     assert.equal(ws.find(x => x.id === sub.id).pay_type, 'sub');
-    const A = (await T.owner.post('/api/jobs', { client_name: 'Smith', address: '1 Main', status: 'activo' })).body;
-    const B = (await T.owner.post('/api/jobs', { client_name: 'Jones', address: '2 Oak', status: 'activo' })).body;
+    const A = (await T.owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', address: '1 Main', status: 'activo' })).body;
+    const B = (await T.owner.post('/api/jobs', { template: 'base',  client_name: 'Jones', address: '2 Oak', status: 'activo' })).body;
     // Semana lunes 2026-11-09 … domingo 11-15: 4 días de 10 h en Smith (40 h) y un sábado de 5 h en Jones (todo extra).
     for (const d of ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12']) {
       const r = await T.owner.post('/api/time', { user_id: w.id, job_id: A.id, in_at: utc(d, '07:00'), out_at: utc(d, '17:00') });

@@ -30,7 +30,7 @@ async function start(opts = {}) {
   const subId = await mkUser('Pedro', 'worker');
   const otherSub = await mkUser('Luis', 'worker');
   const cliId = await mkUser('Cliente', 'client');
-  const job = (await owner.post('/api/jobs', { client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
+  const job = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
   await owner.put(`/api/jobs/${job.id}`, { client_user_id: cliId });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Pedro', trade: 'concreto', agreed_cents: 100000, user_id: subId });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Luis', trade: 'eléctrico', agreed_cents: 100000, user_id: otherSub });
@@ -99,7 +99,7 @@ test('tablero del día: paso actual, siguiente sub, avisar, confirmar y alertas'
     b = (await owner.get('/api/board')).body;
     assert.equal(b.jobs.find(x => x.job_id === job.id).next.confirmed_at, '');
     // El PM ve el tablero solo de sus obras
-    const other = (await owner.post('/api/jobs', { client_name: 'Otra', status: 'activo' })).body;
+    const other = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Otra', status: 'activo' })).body;
     const pb = (await pm.get('/api/board')).body;
     assert.ok(pb.jobs.every(x => x.job_id !== other.id));
     assert.ok(pb.jobs.some(x => x.job_id === job.id));
@@ -169,7 +169,7 @@ test('materiales: catálogo con close-up, ficha de la obra, buscador y galería 
     assert.ok((await owner.get(`/api/jobs/${job.id}/gallery`)).body.every(f => f.gallery === 1));
     // Otro cliente (otra obra) busca "cedar" y ve la foto de muestra, sin datos del otro cliente
     const otherCliId = await mkUser('Otra', 'client');
-    const other = (await owner.post('/api/jobs', { client_name: 'Jones', status: 'cotizado' })).body;
+    const other = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Jones', status: 'cotizado' })).body;
     await owner.put(`/api/jobs/${other.id}`, { client_user_id: otherCliId });
     const c2 = await as('otra');
     const found = (await c2.get('/api/materials?q=cedar')).body.materials;
@@ -311,7 +311,7 @@ test('dos empresas: información separada, activar con los mismos dueños, entra
     // Información separada
     assert.equal((await g.get('/api/jobs')).body.length, 0, 'JKL empieza vacía');
     assert.equal((await g.get(`/api/jobs/${job.id}`)).status, 404);
-    const jj = (await g.post('/api/jobs', { client_name: 'Garcia baño', status: 'activo' })).body;
+    const jj = (await g.post('/api/jobs', { template: 'base',  client_name: 'Garcia baño', status: 'activo' })).body;
     await g.post('/api/companies/switch', { key: 'ee' });
     assert.ok(!(await g.get('/api/jobs')).body.some(x => x.client_name === 'Garcia baño'));
     await g.post('/api/companies/switch', { key: 'jkl' });

@@ -21,9 +21,9 @@ test('publicidad por canal y entrega de obra firmada por el cliente', async () =
     await call('POST', '/api/login', { username: 'glaiber', password: 'una-clave-larga-1' });
     const ym = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date()).slice(0, 7);
     // 2 prospectos de Google (uno ganado) y uno referido ganado
-    const a = (await call('POST', '/api/jobs', { client_name: 'A', address: '1', status: 'prospecto', lead_source: 'Google Ads' })).body;
-    await call('POST', '/api/jobs', { client_name: 'B', address: '2', status: 'prospecto', lead_source: 'google' });
-    const c = (await call('POST', '/api/jobs', { client_name: 'C', address: '3', status: 'prospecto', lead_source: 'Referido de Smith' })).body;
+    const a = (await call('POST', '/api/jobs', { template: 'base',  client_name: 'A', address: '1', status: 'prospecto', lead_source: 'Google Ads' })).body;
+    await call('POST', '/api/jobs', { template: 'base',  client_name: 'B', address: '2', status: 'prospecto', lead_source: 'google' });
+    const c = (await call('POST', '/api/jobs', { template: 'base',  client_name: 'C', address: '3', status: 'prospecto', lead_source: 'Referido de Smith' })).body;
     for (const j of [a, c]) { await call('POST', `/api/sales/leads/${j.id}/event`, { kind: 'enviado', amount_cents: 2000000 }); await call('POST', `/api/sales/leads/${j.id}/event`, { kind: 'ganado' }); }
     assert.equal((await call('POST', '/api/marketing/spend', { month: ym, channel: 'Google', amount_cents: 50000 })).status, 200);
     assert.equal((await call('POST', '/api/marketing/spend', { month: 'mal', channel: 'Google', amount_cents: 1 })).status, 400);
@@ -33,7 +33,7 @@ test('publicidad por canal y entrega de obra firmada por el cliente', async () =
     assert.equal(ref.won, 1); assert.equal(ref.cost_per_won_cents, null);
     // cierre de obra
     await call('PUT', '/api/settings/pro', { review_link: 'https://g.page/r/ejemplo/review' }).catch(() => {});
-    const job = (await call('POST', '/api/jobs', { client_name: 'Smith', address: '9 Oak', status: 'activo' })).body;
+    const job = (await call('POST', '/api/jobs', { template: 'base',  client_name: 'Smith', address: '9 Oak', status: 'activo' })).body;
     const it = (await call('POST', `/api/jobs/${job.id}/punch`, { text: 'Retocar pintura del poste' })).body;
     assert.equal((await call('POST', `/api/jobs/${job.id}/closeout-request`)).status, 400, 'con pendientes no se pide la firma');
     await call('PUT', `/api/punch/${it.id}`, { status: 'hecho' });

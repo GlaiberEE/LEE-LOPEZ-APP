@@ -38,7 +38,7 @@ async function start() {
   const mk = async (name, role, lang, phone = '') => (await owner.post('/api/users', { name, username: name.toLowerCase(), password: 'otra-clave-larga-1', role, lang, phone })).body.id;
   const jack = await mk('Jack', 'pm', 'en', '(214) 555-0101');
   const salomon = await mk('Salomon', 'worker', 'es', '(214) 555-0102');
-  const job = (await owner.post('/api/jobs', { client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
+  const job = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
   await owner.put(`/api/jobs/${job.id}`, { pm_id: jack });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Salomon', trade: 'Concreto', agreed_cents: 100000, user_id: salomon });
   const as = async u => { const c = client(); await c.post('/api/login', { username: u, password: 'otra-clave-larga-1' }); return c; };

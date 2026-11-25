@@ -24,6 +24,242 @@ No hay que instalar nada más: no usa `npm install` ni paquetes externos.
 | Gastos | Todo, con recibos | Registra compras (no ve totales) | Nunca |
 | Dinero de la obra | Todo | Nunca | Solo precio, change orders, sus pagos y saldo |
 
+## Nuevo en v2.17.1: la app avisa que hay versión nueva
+
+- El número de versión se ve en el menú (abajo, junto al nombre), en la pantalla de entrar y en Ayuda.
+- Cuando se publica una versión nueva en Render, cada teléfono o computadora que tenga la app abierta (o la vuelva a abrir) ve arriba: **"Hay una versión nueva de la app (2.17.2). Usted tiene la 2.17.1." → Actualizar ahora**. La app revisa al abrir, al volver a ella y cada 10 minutos. Nunca se recarga sola (la persona podría estar escribiendo).
+- Después de actualizar sale una sola vez la lista de **Novedades**, en el idioma de cada quien. También está en Ayuda → Novedades, con "Buscar actualización".
+- Para cada versión nueva, las novedades van en `lib/releases.js` (español e inglés). Una prueba automática no deja publicar una versión sin sus novedades.
+
+## Nuevo en v2.17: tickets y gastos (Fase 2)
+
+- **🧾 Registrar ticket** (en Gastos y en la pestaña Gastos de cada obra): tienda (con las frecuentes: Lowe's, Home Depot, ABC Supply, Leroy Jordan, Amazon), **número de ticket**, fecha, **cómo se pagó** (tarjeta de la compañía, C.O.D., cheque, Zelle, efectivo, dinero propio), **foto o PDF** (cámara, galería, Google Drive) y **subtotal**. El **impuesto de 8.25%** sale solo (se puede cambiar o quitar) y la app da el total.
+- **➗ Dividir un ticket:** cada parte a una obra y su partida, a **gasto general de la empresa** (la herramienta va aquí), o **personal** (no cuenta como gasto, solo queda anotado). El impuesto se reparte solo, sin perder centavos.
+- **Bloqueo de duplicados:** la misma tienda + el mismo número de ticket no entra dos veces (reconoce "LOWE'S #053997" = "Lowe's 53997"). Solo un dueño lo pasa, con motivo; queda en el historial. Sin número, avisa si hay otro con el mismo total, fecha y tienda. También aplica a gastos escritos a mano y a tickets escaneados (la lectura automática ahora saca el número y el subtotal).
+- **Gastos → Empresa (gasto general):** herramienta, equipo, vehículos, gasolina, seguros, oficina, software, marketing… con totales por categoría. Solo los dueños.
+- **Gastos → Tickets:** todos los tickets del periodo con a dónde fue cada parte, por forma de pago, y cuáles no tienen foto: para revisar cada viernes contra la tarjeta.
+- **Para la contadora (CSV):** gastos de obra y de empresa del periodo, en inglés, con número de ticket, forma de pago, subtotal, impuesto y total.
+- El PM puede registrar tickets de sus obras dentro de su límite; arriba, espera a un dueño. Un ticket pagado con dinero propio de un dueño lo autoriza el otro dueño.
+
+## Nuevo en v2.32: opiniones de clientes (encuesta al terminar la obra)
+
+- **Solo al final:** cuando la obra queda **Terminada**, la app crea la encuesta del cliente con su propio enlace (no necesita contraseña) y deja listo el texto en **Textos** para mandárselo. Si no contesta en 3 días, sale un recordatorio (solo uno). Si el cliente tiene portal, también la ve ahí.
+- **Qué pregunta (2 minutos, en su idioma):** limpieza, puntualidad, comunicación, calidad del trabajo y la cuadrilla (1 a 5 estrellas); qué tan probable es que nos recomiende (0 a 10); qué podemos mejorar; qué le gustó más.
+- **Opinión sincera:** el cliente ve que sus comentarios los leen solo los dueños. El PM, la oficina y los subs no ven las respuestas; al PM solo le llega el promedio de estrellas para su calificación.
+- **Calificación baja** (alguna pregunta con 1–2 estrellas, promedio menor a 3.5, o recomendación de 6 o menos): aviso inmediato a los dueños y tarjeta en Inicio. Llámele y toque **Ya le llamé** con lo que se acordó.
+- **Calificación muy alta:** al terminar, al cliente se le ofrece dejar la reseña de Google (si el link está en Ajustes de la empresa).
+- **Opiniones de clientes** (menú de los dueños): contestadas, promedio, recomendación (NPS), por llamar; promedio por pregunta, por PM, por tipo de proyecto y por sub; todas las respuestas; las que no han contestado, con su enlace.
+- Las obras que ya estaban terminadas antes de esta versión no reciben encuesta.
+
+## Nuevo en v2.35: selecciones del cliente (lo que falta escoger)
+
+- En la obra → **Materiales** → **Selecciones del cliente**. **"Armar las de esta obra"** pone lo que normalmente se escoge según las tareas (teja, ceiling, stain, piedra, cubierta, equipo, luces…). También se agregan a mano.
+- Cada selección se liga a la **tarea que la necesita**. **Fecha límite** = fecha de la tarea − días para pedirlo (7 de entrada, se cambia), o una fecha fija. Si la tarea se mueve, la fecha se mueve.
+- Dos formas de trabajar: **opciones** del catálogo de materiales (con foto) para que el cliente toque una, o el cliente **escoge por su cuenta** y se anota.
+- El cliente **aprueba en su portal** (queda su nombre y la fecha). Si aprobó en persona, por texto o por correo, se marca "aprobado" diciendo cómo.
+- **Recordatorios al cliente**: 3 días antes, el día y al día siguiente (aviso en su app y texto listo en **Textos** para mandar).
+- **Avisos para ustedes**: si se atrasa, aviso a los dueños y al PM; sale en el **Resumen de hoy** y en **Mis pendientes**; la tarea queda marcada en rojo **"Detenida"**.
+- Al aprobarse, el material entra a la **Ficha de materiales**. Los subs solo ven lo aprobado. Si el cliente cambia algo ya aprobado, les llega aviso por si cuesta un **change order**.
+
+## Nuevo en v2.33: categorías y listas a la medida de la compañía
+
+- **Más → Categorías y listas** (o Mi cuenta → Ajustes de la empresa). Cinco listas: **gastos de obra**, **gastos de la compañía**, **pago de tickets**, **pagos a subs** (Zelle, cheque, depósito directo… y las que agreguen, como Cash App; desde v2.34) y **trades**.
+- Los dueños **agregan**, **cambian el nombre** (español e inglés) o **esconden**. Nada se borra: lo que ya tiene gastos conserva su nombre. Las que tienen 🔒 las necesita la app y solo se renombran.
+- Gastos de la compañía (no de una obra): diésel en *Gasolina*, llanta de la traila en *Vehículos y trailers*, mantenimiento de camionetas en *Reparación y mantenimiento*, y ahora **Basura y landfill**. Si falta algo, se agrega aquí.
+- Cada cambio queda en el historial. El PM, la oficina y los agentes no cambian las listas.
+
+## Nuevo en v2.31: seguridad y dinero, y pantalla sencilla para los subs
+
+**Una sola regla para todo gasto**
+- Lo que registra un sub (gasto, ticket o reembolso) respeta el **cierre de periodo**, queda en el **historial** y aparece en Inicio como **Gastos de subs por revisar**. Ya cuenta en la obra; un dueño, el PM de la obra o la oficina toca **Está bien** o lo abre para corregirlo.
+- Un ticket leído por la AI **nunca se guarda solo**: la app propone la obra y el monto, y una persona confirma.
+
+**Dos dueños, sin huecos**
+- Lo autoriza el otro dueño: **crear un dueño**, **desactivar** al otro dueño o quitarle su verificación, **change orders de $1,000 o más** (crearlo aprobado o aprobarlo), **apagar** la doble firma de pagos a subs y **quitar** la verificación obligatoria.
+- Lo que pide un PM de $1,000 o más (change orders y cambios de dinero) también lo firman los dos dueños.
+- Si el otro dueño está **desactivado**, la app **espera** en lugar de saltarse la regla. (Una compañía con un solo dueño sí trabaja sola.)
+- Cada dueño cambia **su propia** contraseña.
+
+**Sesiones y verificación**
+- Al cambiar la contraseña se cierra la sesión en los demás teléfonos y computadoras.
+- Dueños, PM, oficina y ventas entran por **7 días**; subs, trabajadores y clientes por 30.
+- Con la entrada en 2 pasos activada, **Autorizar** pide el código de 6 dígitos. En **Mi cuenta → Seguridad de la compañía** se puede exigir para todos los dueños. Recomendado: que los dos activen su entrada en 2 pasos y luego enciendan el interruptor.
+
+**Pantalla del sub, más clara**
+- Inicio del sub con **botones grandes con iconos de línea** (v2.31.1): Foto del ticket, Foto del trabajo, Hay un problema, Mis pagos, Mi semana, Mandar invoice.
+- **Mis obras ahora** solo enseña donde está trabajando; las que vienen y las terminadas quedan guardadas abajo.
+- En la obra: **Cómo llegar**, los mismos botones y **Mis tareas** con botones grandes ▶ Empezar / ✓ Terminé. Lo de los demás y lo terminado se abre con un toque.
+
+## Nuevo en v2.30: inventario de herramienta y equipo
+
+- **Menú → Inventario** (dueños, PM, oficina y contadora). Cada cosa con etiqueta (H-0001), tipo, marca, modelo, serie, fecha y costo de compra, tienda, garantía, estado (bien / necesita reparación / no aparece), foto y ticket.
+- **Dónde está:** bodega, una obra, en reparación o dada de baja. La herramienta no se presta a personas. "Mover" deja historial (quién y cuándo); "La vi" sirve para el conteo ("vista hace X días").
+- **Ligado a los gastos de la compañía:** las compras de categoría Herramienta o Equipo aparecen en "Compras sin pasar al inventario" y se pasan con un toque (varias iguales = una etiqueta cada una).
+- **Quién:** dueños y oficina la manejan (solo un dueño borra; mejor dar de baja con motivo). PM: sin costos, mueve entre la bodega y sus obras. Contadora: todo con costos, sin cambiar. Sub: ve qué herramienta hay en su obra.
+- Aviso 30 días antes de que venza la garantía de una herramienta.
+
+## Nuevo en v2.29: webhooks y cierre de mes (fase 8, parte 2)
+
+- **Cierre de mes** (Menú → Cierre de mes; la contadora en Contabilidad): revisión (tickets sin foto, sin obra, invoices de subs sin aprobar, cambios por aprobar), **paquete del mes .zip** (gastos de obra y empresa, archivos para QuickBooks, pagos de clientes, invoices de subs y la foto de cada ticket) y **"Cerrar el mes"** con el cierre de periodo (reabrir necesita al otro dueño).
+- **Conexiones (webhooks)** en Equipo: dirección https + eventos (`expense.created`, `receipt.created`, `inspection.result`, `change_order.created/updated`, `payment.received`, `case.opened`, `daily_report.created`, `month.closed`, `job.created/updated`, `task.done`, `digest`). Cuerpo JSON `{event, company, at, data}` firmado con `X-EE-Signature: sha256=HMAC(clave, cuerpo)`. 2 reintentos, bitácora, probar, pausar, clave nueva. No se permiten direcciones internas.
+- Los agentes reciben el resumen de la mañana como evento `digest`.
+
+## Nuevo en v2.28: resumen de la mañana y textos listos (fase 8, parte 1)
+
+- **Resumen de la mañana** (6:30 AM, hora de Texas; los dueños la cambian en "Resumen de hoy"). A cada persona le llega un aviso con su día:
+  - Dueños: trabajo de hoy, inspecciones (y las que no tienen resultado), cambios por aprobar, pagos a subs que tocan, cobros por hacer o vencidos, casos urgentes, papeles por vencer, tickets por asignar y su plan.
+  - PM: lo de sus obras, sin dinero de la compañía. Vendedor: citas y seguimientos. Sub: sus tareas de hoy. Oficina: tickets y papeles.
+  - Cada quien lo puede apagar. Los domingos no se manda. Los agentes lo leen con `GET /api/digest`.
+- **Textos listos para mandar** (Textos, y aviso en Inicio): mañana en casa del cliente, inspección de mañana, recordatorio de cobro (sin monto), lo de mañana para cada sub (sin horario) y "pasó la inspección". En el idioma de cada persona, sin dinero. Nada se manda solo. Sin Twilio: "Abrir en Mensajes", "Copiar" y "Ya lo mandé".
+
+## Nuevo en v2.27: documentos (fase 7, parte 2)
+
+- **Menú → Documentos.** Papeles de la compañía (licencias, seguros, registro de contratista de cada ciudad, W-9 de la compañía) con número, ciudad, fecha de vencimiento y archivo. Aviso 30 días antes y el día que vence (dueños y oficina); en Inicio sale "Papeles por vencer". Los suben los dueños y Administración; el PM y la contadora los ven; solo un dueño los borra.
+- **Plantillas** (dueños, en Documentos): contrato, change order y certificado de garantía, en inglés. Se llenan solas con los datos de la obra (`{{client_name}}`, `{{contract_total}}`, `{{payment_schedule}}`…). Se pueden cambiar y volver al texto de la app. **Que su abogado revise el texto.**
+- **Pestaña "Contrato y garantías"** en cada obra: "Hacer contrato" (PDF listo para firmar), "Subir contrato", "Hacer change order en PDF". Un dueño lo marca "Firmado" (y sube la copia firmada): ya no se cambia ni se borra. Se comparte con el cliente con una casilla. Los subs nunca lo ven.
+- **Garantías:** la de trabajo (12 meses desde que se terminó la obra) sale sola; las de fábrica se agregan con marca, modelo, número de serie, vencimiento y archivo. El cliente las ve en su portal; aviso a los dueños 30 días antes. "Certificado de garantía" en PDF cuando la obra ya se terminó.
+
+## Nuevo en v2.26: puestos y permisos (fase 7, parte 1)
+
+- **Puestos nuevos** (Equipo → "+ Usuario" → Rol):
+  - **Administración (oficina):** escanea y registra tickets y gastos de la compañía. No ve precios, ganancias ni pagos de las obras; no borra ni cambia lo registrado; no puede registrar un reembolso a su nombre ni guardar un ticket repetido (eso lo hace un dueño).
+  - **Contadora (solo ver):** página "Contabilidad" con las fechas y los archivos para Excel/QuickBooks (gastos de obra y empresa, pagos de clientes, invoices de subs, reporte 1099) y la ganancia por tipo. En Gastos ve cada gasto y ticket con su foto. No puede cambiar nada.
+- **Permisos por persona** (🔸, al editar a la persona): Encargado de cuadrilla (trabajador/sub: escribe el reporte del día de sus obras; queda interno y también recibe el aviso de las 6:30 PM), "Ve todas las obras" (PM), Ventas (dueño y PM), "Ve los gastos de las obras" (Administración), "Ve el reparto de ganancia" (Contadora).
+- **Tabla "Puestos y permisos"** abajo de la lista del equipo.
+- Seguridad: la oficina y la contadora solo pueden abrir las rutas de su lista; todo lo demás regresa "Esto no es parte de su puesto". Solo los dueños aprueban pagos y agregan usuarios.
+
+## Nuevo en v2.25: historial diario de cada obra (fase 6)
+
+- **Pestaña "Historial diario"** en cada obra (dueños y PM de la obra). Muestra lo que pasó cada día, junto solo:
+  - tareas empezadas y terminadas (y quién) y fechas movidas;
+  - inspecciones con su resultado y motivo;
+  - fotos, rough-in confirmado con foto, change orders (sin precio) y casos;
+  - tickets (sin monto), avisos de cambio de fecha y novedades al cliente;
+  - el plan del día de la gente en esa obra y el reporte del día (clima, cuadrilla, notas).
+- **En inglés:** el día se guarda en inglés (registro de la compañía) y también en español. Lo que escribe la gente se traduce con la AI de traducciones (ANTHROPIC_API_KEY o XAI_API_KEY); el original siempre queda. Sin clave, se guarda como se escribió.
+- **Aviso 6:30 PM:** si una obra trabajó hoy (tenía tareas o pasó algo) y nadie escribió el reporte del día, le llega un aviso al PM de la obra; si no tiene PM, a los dueños. En Inicio sale "Falta el reporte del día".
+- **Cierre 10 PM:** el día se congela solo (o antes con "Cerrar el día"). Ya no cambia aunque después se borre o agregue algo. Lo que falte entra como **nota tardía** con nombre, fecha y hora. Cada día cerrado guarda una huella (hash) para comprobar que no se tocó.
+- **PDF:** del día o de toda la obra, en inglés (o en español con "PDF en español"). Nunca lleva montos de dinero.
+- Subs y clientes no lo ven.
+
+## Nuevo en v2.24: plan de mañana
+
+- **Menú → Mi plan** (dueños, PM y vendedores; el sub lo ve en su Inicio). Pestañas **Hoy** y **Mañana**. En Inicio sale el plan de hoy como lista para palomear.
+- **Aviso a las 5 PM** a dueños, PM y vendedores para armar el plan de mañana.
+- **La app sugiere** lo que ya sabe para ese día: tareas que tocan, inspecciones, citas, seguimientos y lo atrasado. "+" o "Agregar todo". También se escribe lo propio, con hora (opcional) y obra.
+- **En la noche**, lo que no se terminó pasa solo al siguiente día de trabajo (el original queda como "movido").
+- **Quién arma el plan de quién:** los dueños, el de cualquiera; el PM, el de los subs de sus obras; vendedor y sub, solo el suyo.
+- **Lo que pone el jefe** sale "lo pidió …": quien lo recibe no lo borra ni lo cambia; lo marca hecho o "No se pudo" con motivo, y al jefe le llega el aviso.
+- **Subs sin horario:** a un sub no se le pone hora, solo qué se necesita y en qué obra (contratista independiente, 1099).
+- **Plan del equipo:** cuánto lleva hecho cada persona y "Armar" para abrir su plan.
+
+## Nuevo en v2.23.1
+
+- **Calendario para contestar:** cuando al sub le preguntan "¿Puede empezar…?", ve el mes con sus **obras activas** (cada obra con su color, solo sus propias tareas; nada de dinero) y el día que se le pide marcado en verde. Si ese día ya tiene trabajo en otra obra, la app se lo dice.
+  - "✅ Sí puedo el …" contesta que sí.
+  - Si no puede, toca en el calendario el día desde el que sí puede y "Puedo desde el …". Puede pasar al mes siguiente con ›.
+  - El mismo calendario lo usa el dueño o el PM con 📞 cuando el sub contesta por teléfono.
+  - Los trabajos que todavía esperan en la fila no salen como obras activas.
+
+## Nuevo en v2.23: fila de espera de trabajos vendidos
+
+- **Menú → Fila de espera** (dueños y PM). Cuando se aprueba un estimado o se firma la propuesta, el trabajo entra a la fila con esa fecha; los más viejos van primero. Las obras activas que todavía no arrancan (ninguna tarea de trabajo empezada) también salen. Lo que ya arrancó, no.
+- **Fecha propuesta:** para cada sub del trabajo la app ve cuándo se libera (el día después de su última tarea pendiente en las obras que ya arrancaron) y propone el arranque cuando los **subs clave** están libres. Se puede escribir otra fecha ("Que la app la proponga" la regresa).
+- **⭐ Clave:** por omisión son los subs de las primeras 3 etapas del trabajo (pilares, concreto, framing…); ustedes marcan o desmarcan. El **% de listo** cuenta solo a los clave: con el framer de dos clave, 50%.
+- **Preguntar a los subs:** a todos los subs con usuario les llega "¿Puede empezar el …?" con la fecha que les toca según el schedule (no la misma para todos). Contestan desde su teléfono en Mis pendientes: sí, o no y desde qué fecha sí pueden. Si contestan por teléfono, el dueño o PM lo captura con 📞.
+- **Espera permitida:** los que no son clave pueden esperar hasta **7 días** (Reglas de la fila); si tardan más, sale ⚠️ y el trabajo no queda "Listo".
+- **Estados:** Listo para arrancar (100% de los clave), Se puede arrancar (50% o más y ningún clave dijo que no), Esperando respuestas, Sin preguntar.
+- **Arrancar:** un dueño o el PM toca "Arrancar el …". La app recorre las tareas que faltan a esa fecha, mueve la primera tarea de quien dijo que no a cuando sí puede, avisa a los subs y el trabajo sale de la fila. Nada arranca solo.
+
+## Nuevo en v2.22: Fase 5 — resultado de inspecciones y rough-in antes de cerrar
+
+- **Resultado de cada inspección** (obra → Permisos, o Inicio → Mis pendientes): "✅ Pasó" o "❌ No pasó", con fecha, inspector y foto opcional.
+  - **Pasó:** la tarea queda hecha en el schedule y se avisa a los subs y al cliente lo que sigue.
+  - **No pasó:** hay que escribir el motivo (hay botones rápidos: código nuevo, falta material, etc.). La app guarda el resultado, crea la **reinspección** (intento 2, con la fecha si ya la sabe), mueve la tarea de la inspección a esa fecha y crea **"Corregir para reinspección: …"** justo antes, al crew del trade que toca. Avisa a los dueños, al PM y a quien corrige; al cliente no.
+  - Una inspección que ya tiene resultado no se cambia: se usa su reinspección. En Permisos se ve el historial (no pasó el…, intento 2…).
+- **Sin resultado:** si pasa la fecha de la inspección y nadie puso el resultado, sale en Inicio ("¿Pasó la inspección?") y a partir de las 7 am del día siguiente llega un aviso a los dueños y al PM, una sola vez.
+- **Rough-in antes de cerrar** (obra → Tareas, arriba): la app arma la lista según los trades de la obra (contactos y switches, cajas de luz y conduit, cables de A/V, línea de gas y prueba, plomería) y se pueden agregar más.
+  - Cada renglón se confirma **con foto** (obligatoria). Lo confirma el sub de ese trade desde su teléfono (le sale en Mis pendientes), el PM o un dueño. Un dueño o PM puede marcar "No aplica" con motivo.
+  - Mientras falte algo, o falte pasar la inspección de rough que va antes, la app **no deja empezar ni marcar hecha** una tarea de cerrar (cielo, forrar, drywall, T&G, aislamiento). Explica qué falta.
+  - Un dueño puede dejarla pasar escribiendo por qué; queda en el historial. Los subs y el PM no pueden saltarlo.
+- **Ojo al subir a Render:** las obras activas que tengan tareas de cerrar y trades de rough van a tener su lista; hasta confirmarla, esas tareas quedan frenadas.
+
+## Nuevo en v2.21.1
+
+- **Agregar un sub a una obra:** el primer campo, "Escoger un sub ya registrado", lista los subs de otras obras y los usuarios de subs. Al escoger uno se rellenan el nombre, qué hace, sus trades, su usuario y sus notas; solo falta escribir lo acordado en esta obra. Si solo escoge el usuario, también se llena lo que esté vacío. La lista no muestra montos.
+
+## Nuevo en v2.21: Fase 4 — change orders con código y estado, y cobros al cliente
+
+- **Código de cada change order:** categoría + número corrido de la obra: GAS-01, PERMIT-02, GRAN-03… (categorías: general, gas, eléctrico, A/V, plomería, permiso, concreto, estructura, techo, piedra, granito, pintura, iluminación, paisajismo y crédito). Se puede escribir otro código; no se repite en la obra. Los change orders que ya existían quedaron como CO-01, CO-02…
+- **Estado:** pendiente (esperando al cliente) → aprobado (suma al contrato) → facturado → **cobrado**. "Cobrado" sale solo cuando los pagos lo cubren. Rechazado no cuenta.
+- **"Hecho"** marca el trabajo del CO aparte del cobro (como el granito pagado por adelantado que queda "cobrado" hasta que Rob diga que está listo). Lo puede marcar el PM. Si el trabajo está hecho y el CO no se ha facturado, sale en Inicio → Cobros.
+- **Facturar un CO:** cada uno con su invoice (PDF en español e inglés y enlace para el cliente). Facturado ya no se cambia de monto ni se borra; se anula el invoice primero.
+- **Pagos del cliente → "Aplicar a":** el contrato (se aplica a las etapas en orden) o un change order. Lo que sobra del contrato se aplica a los change orders.
+- **Cobros por etapa** (depósito, avance y final): ahora también en las obras cuyo contrato viene de un **estimado aprobado** (Planos), no solo de la propuesta firmada.
+- **Dinero → Cobros:** por obra, contrato + change orders, cobrado, por cobrar, change orders sin cobrar, los que esperan al cliente y lo vencido. Para el cierre del viernes.
+- **El cliente** ve cada change order con su código y si está pendiente, aprobado, por pagar o pagado, con su invoice.
+- Cambio de regla: los change orders aprobados **ya no se suman a la última etapa**; se cobran aparte.
+
+## Nuevo en v2.20: Fase 3 (pagos a subs), planos y estimado → invoice, aviso de inspección pasada
+
+- **Plan de pago de cada sub** (pestaña Subcontratistas, debajo de cada sub): **50/50** (mitad al empezar su primera tarea, mitad al terminar todas), **por avance** (% de sus tareas hechas, o a mano) o **un solo pago al final**. Para trabajos de menos de **$3,500** la app sugiere el pago al final (el monto se cambia en Mi cuenta). La app muestra "Toca pagar $X", lo que espera autorización y si le falta el **W-9**. En Inicio sale "Toca pagar a subs".
+- **Cada pago a un sub lo autorizan los dos dueños:** uno toca "Pedir autorización del pago" y el otro lo aprueba en Inicio → Cambios por autorizar. Si lo pide un PM, dan su visto bueno los dos dueños. Al sub le llega el aviso de su pago. Se puede apagar en Mi cuenta → Pagos a subs y avisos (para compañías con un solo dueño, ya se aplica directo).
+- **Pestaña Planos** en cada obra: planos (PDF hasta 25 MB o fotos) con "Lo ven los subs" / "Lo ve el cliente", el **estimado** con número y monto, y el **scope del trabajo sin precios** (la app no deja guardar montos ahí; "Copiar de lo vendido" lo arma con las partidas sin precios).
+- **Estimado → invoice:** cuando el cliente aprueba, toque "Aprobado → invoice". Queda el invoice (INV-número del estimado) con el mismo archivo y monto; si la obra era prospecto o cotizada, pasa a **En obra** con ese contrato y su calendario de cobros. Un estimado aprobado o un invoice ya no se cambia ni se borra. La propuesta firmada en línea también deja su invoice.
+- **Al crear una obra** la app pide los planos y el estimado (se pueden subir después). Si faltan, la pestaña Planos lo avisa.
+- **Los subs** ven en su obra "📐 Planos y scope del trabajo". Nunca ven el estimado, el invoice ni montos. Cuando se suben planos nuevos, les llega un aviso.
+- **Inspección pasada:** al aprobarla en Permisos o marcarla hecha en Tareas, la app avisa a los subs de la obra y al cliente "✅ Pasó la inspección… Sigue: …", y al sub de la siguiente tarea "Ya puede seguir" con su fecha. El cliente lo ve en Novedades. Se avisa una sola vez. Se apaga en Mi cuenta.
+
+## Nuevo en v2.19: agregar inspecciones nuevas a la lista
+
+- **Menú → Inspecciones de la ciudad** (el vendedor la abre desde Mi cuenta): las que trae la app y las de la compañía.
+- **"+ Nueva inspección":** nombre en español (inglés opcional), etapa (antes de colar, rough, finales u otras) y, si se sabe, el trade que normalmente va antes. Desde ese momento sale en la pregunta "¿Qué inspecciones pidió la ciudad?" de todas las obras, con su lugar sugerido entre los trades. Si la obra no tiene ese trade, la app la pone donde van las de su misma etapa.
+- **Desde la obra:** al escribir una con "+ Otra inspección", la palomita "📌 Agregarla a la lista para las próximas obras" la guarda en la lista.
+- **Quién:** pueden agregar y cambiar dueños, project managers y vendedores (también los agentes de esos tipos). Quitar: el dueño o quien la agregó; las obras que ya la tienen no cambian. Subs, trabajadores y clientes no ven la lista. Cada compañía tiene la suya.
+- No se repiten: si ya existe (de la app o de la compañía) con el mismo nombre, avisa.
+
+## Nuevo en v2.18: inspecciones de la ciudad en el schedule
+
+- **La app pregunta.** Cuando un permiso pasa a **Aprobado** (obra → Permisos), se abre "¿Qué inspecciones pidió la ciudad?". Si se cierra sin contestar, queda un pendiente en Inicio y un aviso en el permiso hasta que se capturen.
+- **Lista por etapa:** antes de colar (pilares, forms, bajo tierra, losa), rough (framing, eléctrico, plomería, gas con prueba de presión, mecánica, mampostería, aislamiento) y finales (eléctrico, plomería, gas/medidor, Oncor, final de la ciudad), más "Otra" con nombre propio.
+- **Entre cada trade:** cada inspección trae sugerido "Va después de" según el trade (por ejemplo, rough eléctrico después de "Eléctrico rough", pilares entre excavar y colar). Se puede cambiar, o ponerla al principio. La fecha es la que dio la ciudad o, si no, el día siguiente a la tarea anterior.
+- **Sin duplicar:** si la plantilla ya traía esa inspección, se usa la misma tarea y se mueve a su lugar. Las de la plantilla que la ciudad no pidió se quitan quitando la palomita (si no tienen avance).
+- **Ligadas al permiso:** cada inspección queda como tarea y como renglón en Permisos. Cambiar la fecha en Permisos mueve la tarea; marcarla Aprobada la pone Hecha. Las inspecciones no se asignan a ningún crew.
+- También: botón **🏛️ Inspecciones de la ciudad** en la pestaña Tareas. PM con permiso de la obra puede usarlo.
+
+## Nuevo en v2.16: plantillas por trade (estudio de mercado) y crews con varios trades
+
+- **Plantillas sugeridas nuevas**, armadas por trade con días típicos y las inspecciones donde las piden las ciudades de DFW (estudio con guías de permisos de Anna, Grapevine, Dallas y Round Rock, y el orden de trades de baños y cocinas). Patio cover: 20 tareas de 8 trades; outdoor living: 30 de 15; cocina exterior: 19; chimenea: 18; baño: 17; cocina interior: 17; remodelación: 15; muro de TV: 11; fire pit: 9.
+- **Cada tarea lleva su trade** (la misma lista que fotos y materiales, ahora con demolición, A/V, azulejo, gabinetes, pisos, vidrio y equipos). Las inspecciones no llevan trade.
+- **Un crew o sub puede tener varios trades.** Se marcan en Equipo (usuario) y, si cambia, en cada obra (Subcontratistas).
+- **Asignación sola:** al poner una plantilla, importar el SCHEDULE o agregar una tarea, se asigna al crew de la obra que hace ese trade. Al agregar un crew a la obra, se le asignan sus tareas sin asignar. Si dos crews hacen el mismo trade, queda sin asignar para escoger a mano.
+- **👷 Asignar por trade** (pestaña Tareas): cada trade con su crew; un crew puede quedarse con varios de un jalón. No toca tareas hechas y, si el crew no estaba en la obra, lo agrega (sin monto) para que la vea.
+- Las fotos del crew toman el trade de su tarea.
+
+## Nuevo en v2.15: plantillas de tareas editables e importar el SCHEDULE (Fase 1)
+
+- **Ya no se meten tareas solas.** Antes, cada obra de patio cover traía 16 tareas fijas. Ahora, al crear la obra, en "Tareas de la obra" se escoge: una plantilla de la compañía (la marcada con ★ sale escogida para ese tipo), la sugerida de la app, o **En blanco**.
+- **Obras → 📋 Plantillas:** una o varias plantillas por tipo de obra, editables (tareas, días, oficio, si es inspección), con "Pegar varias" para meter una lista de un jalón. Incluye la remodelación interior de JKL Homes. Cada compañía tiene las suyas.
+- **Pestaña Tareas → 📥 Importar SCHEDULE:** se copia la tab SCHEDULE de la hoja de la obra (con encabezados TASK NAME, STATUS, START PLANNED…) y se pega, o se sube el .xlsx. Vista previa; luego **reemplazar** o **agregar**. Respeta estado, fechas y TRADE ID (se liga a la partida). No repite tareas que ya están.
+- **🧹 Quitar tareas que no se usan:** marca solas las que ponía la app. Nunca borra tareas hechas, en progreso, con fotos, con avisos al sub o con un cobro ligado. "Reemplazar" del plan con AI sigue la misma regla (antes podía borrar tareas pendientes con fotos).
+- **Sin margen falso:** una obra sin ningún costo cargado ya no presume 100% de ganancia; dice "sin costos cargados".
+- "Mano de obra (horas)" solo aparece como categoría si la compañía tiene gente por hora.
+- Para Eli (agentes): nuevas acciones en el manual del agente para ver plantillas, ponerlas e importar el SCHEDULE.
+
+## Nuevo en v2.14: fotos y materiales clasificados por etapa y trade, y fotos de la galería o Google Drive
+
+- Al subir fotos ("+ Fotos" en la obra, 📷 en una tarea, o el sub desde su teléfono) salen dos botones: **📷 Tomar foto** (cámara) y **🖼️ Galería o archivos** (fotos que ya tiene). En Android el selector muestra Galería, Google Fotos y Google Drive; en iPhone, Fotos y Archivos (Google Drive aparece en Archivos si tiene la app). Se pueden subir varias a la vez.
+- Cada foto lleva **Etapa** (la tarea de la obra) y **Trade** (planos, excavación, concreto, carpintería, techo, electricidad, plomería, gas, piedra, cubierta, pintura, drywall, paisajismo, limpieza, otro). La app los sugiere según la tarea en progreso y el oficio del sub; se pueden cambiar.
+- Pestaña Fotos: filtros por etapa y por trade, y **✎ Clasificar** para corregir etapa, trade o comentario de una foto ya subida (un sub solo las suyas).
+- Al agregar un material a la obra también se elige **Etapa** y **Trade** (sugerido por el tipo de material), y se ve en la ficha.
+- La foto de cerca de un material nuevo ya no obliga a usar la cámara: también se puede escoger de la galería o Drive.
+
+## Nuevo en v2.13.1: resumen de la obra para imprimir, y documentos sin quedarse atorado
+
+- En cada obra, el botón **"🖨 Resumen / imprimir"** (antes "PDF para el cliente") abre el resumen dentro de la app, con **← Volver a la obra**, **🖨 Imprimir** y **📄 PDF**.
+- Dos versiones (solo dueños): **Para el cliente** (contrato, change orders, pagos, saldo y avance; sin costos) e **Interno (con costos)** (agrega gastos por tipo, ganancia, margen y lo que se debe a cada sub). Al imprimir sale limpio, sin menús ni botones.
+- **Arreglo:** en la app instalada, los PDF (resumen, invoices, estados de cuenta, propuestas) y archivos se abrían en una ventana sin botón de regresar. Ahora se abre un cuadro con **Imprimir o compartir** (menú del teléfono: Imprimir, WhatsApp, correo, Archivos), **Guardar** y **Cerrar**, y usted sigue en la misma pantalla.
+
 ## Nuevo en v2.13: traducción automática español ↔ inglés
 
 - Cada quien escribe en su idioma y cada quien lee en el suyo: si Salomón escribe un caso en español y el PM (Jack) usa la app en inglés, Jack lo lee en inglés; lo que Jack conteste, Salomón lo lee en español.
@@ -327,7 +563,7 @@ Lo que no es dinero (descripciones, fechas de tareas, notas, fotos) se sigue cam
 - En el teléfono hay un botón verde **Escanear** (abajo a la derecha). Toma foto del ticket (o varios) o sube un PDF.
 - **Código de obra:** cada obra tiene un código, por ejemplo **EE-0001**. Al pagar en Home Depot / Lowe's, den ese código como *Job name* o *PO*. Sale impreso en el ticket y la app lo archiva sola en esa obra.
 - Si no trae el código, la app busca la **dirección** de la obra o el **nombre del cliente** en el ticket. Si el sub solo tiene una obra activa, va a esa.
-- Cuando la app está segura, el gasto se guarda solo (con la foto como recibo) y la ganancia se recalcula. Si no está segura, queda **Por asignar**: el dueño lo ve en Inicio y lo asigna con un toque. Si se fue a la obra equivocada: **Cambiar obra**.
+- **Desde v2.31 la AI solo propone:** la app sugiere la obra y llena el monto, pero el gasto se guarda hasta que una persona toca **Guardar gasto** (así pasa por los límites del PM, el cierre de periodo y el historial). Si no está segura, queda **Por asignar**: el dueño lo ve en Inicio y lo asigna con un toque. Si se fue a la obra equivocada: **Cambiar obra**.
 - Detecta **tickets repetidos** (misma foto, o mismo monto + fecha + tienda).
 - Escanear desde la pestaña Gastos de una obra lo manda directo a esa obra.
 

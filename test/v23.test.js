@@ -33,8 +33,8 @@ async function start(opts = {}) {
   const subId = await mk('Pedro', 'worker', '(972) 555-0101');
   const otherSub = await mk('Luis', 'worker', '972-555-0102');
   const pmId = await mk('Mario', 'pm', '9725550103');
-  const job = (await owner.post('/api/jobs', { client_name: 'Smith', client_phone: '214 555 0199', address: '1 Main St', status: 'activo' })).body;
-  const job2 = (await owner.post('/api/jobs', { client_name: 'Jones', client_phone: '214 555 0177', address: '9 Oak St', status: 'activo' })).body;
+  const job = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', client_phone: '214 555 0199', address: '1 Main St', status: 'activo' })).body;
+  const job2 = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Jones', client_phone: '214 555 0177', address: '9 Oak St', status: 'activo' })).body;
   await owner.put(`/api/jobs/${job.id}`, { pm_id: pmId });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Pedro', trade: 'concreto', agreed_cents: 100000, user_id: subId });
   await owner.post(`/api/jobs/${job2.id}/subs`, { name: 'Luis', trade: 'eléctrico', agreed_cents: 100000, user_id: otherSub });
@@ -165,7 +165,8 @@ test('escaneo: con una partida clara el gasto queda en esa partida', async () =>
   try {
     const L1 = (await T.owner.post(`/api/jobs/${T.job.id}/lines`, { code: 'L1', trade: 'Concreto', description: 'Losa de concreto', sold_cents: 500000 })).body;
     await T.owner.post(`/api/jobs/${T.job.id}/lines`, { code: 'L2', trade: 'Electricidad', description: 'Luces y contactos', sold_cents: 200000 });
-    const s = (await T.owner.post('/api/scans', { file: PNG, job_id: T.job.id })).body;
+    const s0 = (await T.owner.post('/api/scans', { file: PNG, job_id: T.job.id })).body;
+    const s = (await T.owner.post(`/api/scans/${s0.id}/file`, { job_id: s0.job_id, amount_cents: 4599, date: '2026-11-20', vendor: 'Home Depot', category: 'material', description: 'Concrete mix 80lb, Rebar #4' })).body;
     assert.equal(s.status, 'guardado', JSON.stringify(s));
     const lines = (await T.owner.get(`/api/jobs/${T.job.id}/lines`)).body;
     const got = (lines.lines || lines).find(l => l.id === (L1.id || L1.line && L1.line.id));

@@ -39,7 +39,7 @@ test('preparación: un solo dueño todavía', async () => {
   await glaiber.post('/api/setup', { name: 'Glaiber', username: 'glaiber', password: 'contrasena-g-123' });
   const sid = (await glaiber.post('/api/users', { name: 'Sub', username: 'sub1', password: 'contrasena-sub1', role: 'worker' })).data.id;
   await sub.post('/api/login', { username: 'sub1', password: 'contrasena-sub1' });
-  job = (await glaiber.post('/api/jobs', { client_name: 'Smith', project_type: 'fire_pit', status: 'activo', quoted_cents: 2000000 })).data.id;
+  job = (await glaiber.post('/api/jobs', { template: 'base',  client_name: 'Smith', project_type: 'fire_pit', status: 'activo', quoted_cents: 2000000 })).data.id;
   const t = (await glaiber.get(`/api/jobs/${job}`)).data.tasks;
   await glaiber.put(`/api/tasks/${t[0].id}`, { assignee_id: sid });
 });
@@ -122,9 +122,12 @@ test('$1,000 o menos: basta un dueño', async () => {
   assert.equal(r2.data.status, 'enviado'); assert.equal(r2.data.approvals_needed, 2);
 });
 
-test('si Jack se desactiva, vuelve a bastar un dueño', async () => {
-  await glaiber.put(`/api/users/${jackId}`, { active: false });
+test('desactivar a Jack lo autoriza Jack; y desactivado, la regla no se salta', async () => {
+  const r = await glaiber.put(`/api/users/${jackId}`, { active: false });
+  assert.ok(r.data.pending, 'un dueño solo no desactiva al otro');
+  const reqId = r.data.request_id;
+  assert.equal((await jack.post(`/api/change-requests/${reqId}/decide`, { action: 'approve' })).data.status, 'aprobado');
   const id = await accepted(500000);
   await sub.post(`/api/docs/${id}/unlock`, { reason: 'x' });
-  assert.equal((await glaiber.post(`/api/docs/${id}/unlock-decide`, { action: 'authorize' })).data.unlock, 'autorizado');
+  assert.notEqual((await glaiber.post(`/api/docs/${id}/unlock-decide`, { action: 'authorize' })).data.unlock, 'autorizado', 'con Jack desactivado no basta un dueño');
 });

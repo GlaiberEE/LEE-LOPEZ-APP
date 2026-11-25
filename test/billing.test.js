@@ -28,7 +28,7 @@ async function start() {
 test('propuesta: partidas → enviar → el cliente la ve sin costos y firma → obra activa con cobros por etapa', async () => {
   const T = await start();
   try {
-    const job = (await T.owner.post('/api/jobs', { client_name: 'Smith', client_phone: '214 555 0199', address: '1 Main', status: 'prospecto', project_type: 'patio_cover' })).body;
+    const job = (await T.owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', client_phone: '214 555 0199', address: '1 Main', status: 'prospecto', project_type: 'patio_cover' })).body;
     assert.equal((await T.owner.post(`/api/jobs/${job.id}/proposal/send`)).status, 400, 'sin partidas no se manda');
     await T.owner.post(`/api/jobs/${job.id}/lines`, { trade: 'PATIO COVER', sold_cents: 2000000, est_cost_cents: 1200000, description: 'Cedar 20x14' });
     await T.owner.post(`/api/jobs/${job.id}/lines`, { trade: 'ELECTRICAL', sold_cents: 500000, est_cost_cents: 300000 });
@@ -94,7 +94,7 @@ test('propuesta: partidas → enviar → el cliente la ve sin costos y firma →
 test('propuesta vencida no se firma', async () => {
   const T = await start();
   try {
-    const job = (await T.owner.post('/api/jobs', { client_name: 'Lee', address: '2 Oak', status: 'prospecto' })).body;
+    const job = (await T.owner.post('/api/jobs', { template: 'base',  client_name: 'Lee', address: '2 Oak', status: 'prospecto' })).body;
     await T.owner.post(`/api/jobs/${job.id}/lines`, { trade: 'FIRE PIT', sold_cents: 800000 });
     await T.owner.put(`/api/jobs/${job.id}/proposal`, { valid_until: '2020-01-01' });
     const token = new URL('http://x' + (await T.owner.post(`/api/jobs/${job.id}/proposal/send`)).body.url).searchParams.get('t');

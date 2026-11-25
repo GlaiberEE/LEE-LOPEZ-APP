@@ -12,15 +12,7 @@ const CO = require('./lib/company');
 const AG = require('./lib/agents');
 
 const PUBLIC = path.join(__dirname, 'public');
-// Huella de la interfaz (versión + contenido de los archivos), calculada una vez al arrancar.
-const APP_STAMP = (() => {
-  const h = require('node:crypto').createHash('sha256');
-  const walk = d => fs.readdirSync(d, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name)).forEach(e => {
-    const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else if (/\.(js|css|html|webmanifest)$/.test(e.name)) h.update(e.name).update(fs.readFileSync(f));
-  });
-  walk(PUBLIC);
-  return require('./package.json').version + '-' + h.digest('hex').slice(0, 8);
-})();
+const { STAMP: APP_STAMP } = require('./lib/stamp');
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8',
   '.mp4': 'video/mp4', '.jpg': 'image/jpeg', '.vtt': 'text/vtt; charset=utf-8' };
@@ -46,6 +38,8 @@ function readBody(req, limit = 12 * 1024 * 1024) {
   });
 }
 
+// Vida de la cookie = vida de la sesión en el servidor (7 días quien maneja dinero, 30 subs y clientes).
+const maxAge = s => Math.max(60, Math.round((((s && s.expires) || Date.now() + 86400000) - Date.now()) / 1000));
 function createServer({ dataDir, secureCookies = false, scanExtractor, planAI, smsSend, driveFetch } = {}) {
   // Una base de datos por empresa (Elevated Exteriors, JKL Homes…). Nada se mezcla entre empresas.
   let list = CO.loadConfig(dataDir);
@@ -113,6 +107,15 @@ function createServer({ dataDir, secureCookies = false, scanExtractor, planAI, s
           return json(403, { error: 'Esto no es parte de sus herramientas' });
         user = { ...k.user, viaKey: true };
       }
+      // Dirección pública de la app (para los enlaces que se mandan por texto, como la encuesta del cliente).
+      if (user && !bearer && !C.originSaved) {
+        C.originSaved = true;
+        try {
+          const proto0 = process.env.TRUST_PROXY === '1' ? String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() : (secureCookies ? 'https' : 'http');
+          const o = process.env.PUBLIC_URL ? process.env.PUBLIC_URL.replace(/\/$/, '') : `${proto0}://${req.headers.host}`;
+          db.prepare("INSERT INTO meta(key,value) VALUES('public_url',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(o);
+        } catch { /* */ }
+      }
       const cookieBase = `Path=/; HttpOnly; SameSite=Strict${secureCookies ? '; Secure' : ''}`;
       if (!req.headers['x-lang'] && user && user.lang === 'en') lang = 'en';
       // En la nube (TRUST_PROXY=1) la conexión llega del proxy: la IP real es la última que agrega el proxy.
@@ -141,7 +144,7 @@ function createServer({ dataDir, secureCookies = false, scanExtractor, planAI, s
         }
         let body = {};
         if (req.method !== 'GET') {
-          const raw = await readBody(req);
+          const raw = await readBody(req, /^\/api\/(jobs\/\d+\/docs|job-docs\/\d+)$/.test(url.pathname) ? 36 * 1024 * 1024 : undefined);
           try { body = raw ? JSON.parse(raw) : {}; } catch { return json(400, { error: 'JSON inválido' }); }
           if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
         }
@@ -167,14 +170,14 @@ function createServer({ dataDir, secureCookies = false, scanExtractor, planAI, s
           const me = X.db.prepare('SELECT id FROM users WHERE username=?').get(user.username);
           const s = A.createSession(X.db, me.id);
           res.writeHead(200, { ...SECURITY_HEADERS, 'Content-Type': 'application/json; charset=utf-8',
-            'Set-Cookie': [`${cookieName(X.key)}=${s.token}; ${cookieBase}; Max-Age=${A.SESSION_DAYS * 86400}`, `ee_co=${X.key}; Path=/; SameSite=Strict; Max-Age=${400 * 86400}${secureCookies ? '; Secure' : ''}`] });
+            'Set-Cookie': [`${cookieName(X.key)}=${s.token}; ${cookieBase}; Max-Age=${maxAge(s)}`, `ee_co=${X.key}; Path=/; SameSite=Strict; Max-Age=${400 * 86400}${secureCookies ? '; Secure' : ''}`] });
           return res.end(JSON.stringify({ ok: true }));
         }
         const ctx = {
           user, token, ip, isLocal, body, query: url.searchParams, ua: req.headers['user-agent'] || '',
           params: (route && route.re.exec(url.pathname).groups) || {}, path: url.pathname,
           company: C.key,
-          setCookie: s => { setCookies.push(`${cookieName(C.key)}=${s.token}; ${cookieBase}; Max-Age=${A.SESSION_DAYS * 86400}`); },
+          setCookie: s => { setCookies.push(`${cookieName(C.key)}=${s.token}; ${cookieBase}; Max-Age=${maxAge(s)}`); },
           clearCookie: () => { for (const c of list) setCookies.push(`${cookieName(c.key)}=; ${cookieBase}; Max-Age=0`); },
         };
         if (!route) return json(404, { error: 'Ruta no encontrada' });
@@ -185,7 +188,7 @@ function createServer({ dataDir, secureCookies = false, scanExtractor, planAI, s
             .find(X => X.key !== C.key && X.db.prepare('SELECT 1 FROM users WHERE username=? AND active=1').get(String(body.username || '').toLowerCase().slice(0, 40)));
           if (!other) throw e;
           const lr = other.table.find(r => r.method === 'POST' && r.re.test('/api/login'));
-          result = await lr.handler({ ...ctx, setCookie: s => { setCookies.push(`${cookieName(other.key)}=${s.token}; ${cookieBase}; Max-Age=${A.SESSION_DAYS * 86400}`); } });
+          result = await lr.handler({ ...ctx, setCookie: s => { setCookies.push(`${cookieName(other.key)}=${s.token}; ${cookieBase}; Max-Age=${maxAge(s)}`); } });
           setCookies.push(`ee_co=${other.key}; Path=/; SameSite=Strict; Max-Age=${400 * 86400}${secureCookies ? '; Secure' : ''}`);
           ctx.loginCompany = other.key;
         }
@@ -197,7 +200,7 @@ function createServer({ dataDir, secureCookies = false, scanExtractor, planAI, s
             const u2 = X.db.prepare('SELECT * FROM users WHERE username=? AND active=1').get(String(body.username || '').toLowerCase().slice(0, 40));
             if (!u2 || u2.must_change || !A.checkPassword(String(body.password || ''), u2.pass_hash)) continue;
             if (u2.totp_secret && !(body.code && A.checkTotp(u2.totp_secret, body.code))) continue;
-            setCookies.push(`${cookieName(c.key)}=${A.createSession(X.db, u2.id).token}; ${cookieBase}; Max-Age=${A.SESSION_DAYS * 86400}`);
+            { const s2 = A.createSession(X.db, u2.id); setCookies.push(`${cookieName(c.key)}=${s2.token}; ${cookieBase}; Max-Age=${maxAge(s2)}`); }
           }
         }
         if (url.pathname === '/api/logout') for (const c of list) { const X = companies.get(c.key); const tk = cookies[cookieName(c.key)]; if (tk) A.endSession(X.db, tk); }
@@ -237,6 +240,8 @@ function createServer({ dataDir, secureCookies = false, scanExtractor, planAI, s
       res.writeHead(200, hdr);
       // El service worker lleva una huella de los archivos de la app: cualquier cambio publicado actualiza los teléfonos.
       if (p === '/sw.js') return res.end(fs.readFileSync(file, 'utf8').replace(/const VERSION = '[^']*';/, `const VERSION = 'ee-${APP_STAMP}';`));
+      // La app sabe con qué versión se cargó, para compararla con la del servidor y avisar que hay una nueva.
+      if (p === '/app.js') return res.end(fs.readFileSync(file, 'utf8').replace("'__CODE_STAMP__'", JSON.stringify(APP_STAMP)));
       return res.end(fs.readFileSync(file));
     } catch (e) {
       if (e instanceof HttpError) return json(e.status, { ...(e.extra || {}), error: e.message });
@@ -266,7 +271,7 @@ if (require.main === module) {
   // Avisos automáticos (resumen de PMs a las 7 am, recordatorio de nota a las 5 pm).
   const pmTick = () => server.dbs().forEach(d => require('./lib/pmreport').tick(d));
   setTimeout(pmTick, 60 * 1000).unref(); setInterval(pmTick, 30 * 60 * 1000).unref();
-  const salesTick = () => server.dbs().forEach(d => { require('./lib/sales').tick(d); try { require('./lib/followup').tick(d); } catch (e) { console.error('[pendientes]', e.message); } try { require('./lib/billing').check(d); } catch (e) { console.error('[cobros]', e.message); } });
+  const salesTick = () => server.dbs().forEach(d => { require('./lib/sales').tick(d); try { require('./lib/followup').tick(d); } catch (e) { console.error('[pendientes]', e.message); } try { require('./lib/billing').check(d); } catch (e) { console.error('[cobros]', e.message); } try { require('./lib/inspections').tick(d); } catch (e) { console.error('[inspecciones]', e.message); } try { require('./lib/dayplan').tick(d); } catch (e) { console.error('[plan]', e.message); } try { require('./lib/history').tick(d); } catch (e) { console.error('[historial]', e.message); } try { require('./lib/docs').tick(d); } catch (e) { console.error('[documentos]', e.message); } try { require('./lib/digest').tick(d); } catch (e) { console.error('[resumen]', e.message); } try { require('./lib/inventory').tick(d); } catch (e) { console.error('[inventario]', e.message); } try { require('./lib/survey').tick(d); } catch (e) { console.error('[encuesta]', e.message); } try { require('./lib/selections').tick(d); } catch (e) { console.error('[selecciones]', e.message); } });
   setInterval(salesTick, 5 * 60 * 1000).unref();
   server.listen(port, host, () => {
     console.log('');

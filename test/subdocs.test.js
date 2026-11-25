@@ -36,8 +36,8 @@ test('preparación', async () => {
   const mk = async (u, role) => (await owner.post('/api/users', { name: u, username: u, password: 'contrasena-' + u, role, trade: 'Roofing' })).data.id;
   roofId = await mk('roofer', 'worker'); const elecId = await mk('electric', 'worker'); const cid = await mk('client1', 'client');
   for (const [c, u] of [[roof, 'roofer'], [elec, 'electric'], [cli, 'client1']]) await c.post('/api/login', { username: u, password: 'contrasena-' + u });
-  job = (await owner.post('/api/jobs', { client_name: 'Smith', project_type: 'patio_cover', status: 'activo', quoted_cents: 3000000 })).data.id;
-  other = (await owner.post('/api/jobs', { client_name: 'Jones', project_type: 'fire_pit', status: 'activo' })).data.id;
+  job = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', project_type: 'patio_cover', status: 'activo', quoted_cents: 3000000 })).data.id;
+  other = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Jones', project_type: 'fire_pit', status: 'activo' })).data.id;
   await owner.put(`/api/jobs/${job}`, { client_user_id: cid });
   const tasks = (await owner.get(`/api/jobs/${job}`)).data.tasks;
   await owner.put(`/api/tasks/${tasks[8].id}`, { assignee_id: roofId });

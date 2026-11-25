@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Elevated Exteriors · Survey</title>
+<link rel="icon" href="/brand/favicon-32.png">
+<style>
+  @font-face { font-family: 'DM Sans'; src: url('/fonts/dm-sans-latin.woff2') format('woff2'); font-weight: 100 1000; }
+  * { box-sizing: border-box; } [hidden] { display: none !important; }
+  body { margin: 0; font-family: 'DM Sans', system-ui, sans-serif; background: #f4f4ef; color: #1d1d1d; }
+  header { background: #1b1b1b; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+  header img { height: 40px; filter: invert(1); }
+  header button { background: #2c2c2c; color: #c5e05a; border: 0; border-radius: 8px; padding: .45rem .7rem; font-weight: 700; cursor: pointer; }
+  main { max-width: 620px; margin: 0 auto; padding: 1.25rem; }
+  h1 { color: #02175d; margin: .4rem 0 .3rem; font-size: 1.65rem; }
+  p.lead { color: #555; margin-top: 0; }
+  form, .box { background: #fff; border-radius: 14px; padding: 1.25rem; box-shadow: 0 6px 24px rgba(0,0,0,.06); display: grid; gap: 1.1rem; }
+  .q > div:first-child { font-weight: 700; margin-bottom: .35rem; }
+  .q small { display: block; font-weight: 400; color: #777; }
+  .stars { display: flex; gap: .3rem; }
+  .stars button { font-size: 2.1rem; line-height: 1; width: 52px; height: 52px; border: 0; background: transparent; color: #d6d6cf; cursor: pointer; padding: 0; }
+  .stars button.on { color: #e3a008; }
+  .nps { display: grid; grid-template-columns: repeat(11, 1fr); gap: .25rem; }
+  .nps button { min-height: 44px; border: 1px solid #cfcfc8; background: #fff; border-radius: 8px; font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
+  .nps button.on { background: #1b1b1b; color: #c5e05a; border-color: #1b1b1b; }
+  .ends { display: flex; justify-content: space-between; font-size: .8rem; color: #777; margin-top: .25rem; }
+  textarea { width: 100%; font: inherit; padding: .75rem; border: 1px solid #cfcfc8; border-radius: 10px; min-height: 96px; }
+  button.send { background: #c5e05a; color: #111; border: 0; border-radius: 12px; padding: 1rem; font-size: 1.1rem; font-weight: 800; cursor: pointer; min-height: 54px; }
+  button.send:disabled { opacity: .6; }
+  .err { color: #b00; font-weight: 600; min-height: 1.2em; }
+  .priv { background: #eef5da; border-radius: 10px; padding: .7rem .9rem; color: #33480c; font-size: .92rem; }
+  .box { text-align: center; padding: 2rem 1.25rem; }
+  .box h2 { color: #02175d; margin: 0; }
+  a.google { display: inline-block; background: #1b1b1b; color: #c5e05a; text-decoration: none; font-weight: 800; padding: .9rem 1.2rem; border-radius: 12px; }
+  @media (max-width: 420px) { .stars button { width: 44px; height: 46px; font-size: 1.9rem; } .nps button { min-height: 40px; font-size: .85rem; } }
+</style>
+</head>
+<body>
+<header><img src="/brand/ee-logo.png" alt="Elevated Exteriors"><button type="button" id="lang">ES</button></header>
+<main>
+  <h1 id="h"></h1>
+  <p class="lead" id="lead"></p>
+  <form id="f" novalidate hidden></form>
+  <div class="box" id="ok" hidden></div>
+</main>
+<script src="/encuesta.js"></script>
+</body>
+</html>

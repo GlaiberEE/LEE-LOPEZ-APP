@@ -30,7 +30,7 @@ async function start() {
   const subId = await mkUser('Pedro', 'worker');
   const otherSub = await mkUser('Luis', 'worker');
   const cliId = await mkUser('Cliente', 'client');
-  const job = (await owner.post('/api/jobs', { client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
+  const job = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', address: '1 Main St', status: 'activo' })).body;
   await owner.put(`/api/jobs/${job.id}`, { client_user_id: cliId });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Pedro', trade: 'concreto', agreed_cents: 100000, user_id: subId });
   await owner.post(`/api/jobs/${job.id}/subs`, { name: 'Luis', trade: 'eléctrico', agreed_cents: 100000, user_id: otherSub });
@@ -111,7 +111,7 @@ test('casos: el cliente pregunta con fotos y el PM abre casos', async () => {
     assert.equal((await luis.get(`/api/issues/${pm.body.id}`)).status, 404);
     assert.equal((await cli.get(`/api/issues/${pm.body.id}`)).status, 404);
     // Sub que no es de la obra no puede abrir casos
-    const other = await owner.post('/api/jobs', { client_name: 'Otra', status: 'activo' });
+    const other = await owner.post('/api/jobs', { template: 'base',  client_name: 'Otra', status: 'activo' });
     assert.equal((await sub.post('/api/issues', { job_id: other.body.id, title: 'x', body: 'y' })).status, 404);
     // Las fotos de casos no se pueden borrar
     const det = (await owner.get(`/api/issues/${q.body.id}`)).body;

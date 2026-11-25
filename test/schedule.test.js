@@ -35,7 +35,7 @@ test('preparación', async () => {
   pedroId = await mk('pedro', 'worker', 'es'); luisId = await mk('luis', 'worker', 'en');
   const cid = await mk('cli', 'client', 'en'); await mk('other', 'client', 'en');
   for (const [c, u] of [[pedro, 'pedro'], [luis, 'luis'], [cli, 'cli'], [other, 'other']]) await c.post('/api/login', { username: u, password: 'contrasena-' + u });
-  job = (await owner.post('/api/jobs', { client_name: 'Smith', client_phone: '(972) 555-0199', project_type: 'fire_pit', status: 'cotizado', end_date: '2026-12-20' })).data.id;
+  job = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', client_phone: '(972) 555-0199', project_type: 'fire_pit', status: 'cotizado', end_date: '2026-12-20' })).data.id;
   await owner.put(`/api/jobs/${job}`, { client_user_id: cid });
   tasks = (await owner.get(`/api/jobs/${job}`)).data.tasks;   // 7 tareas
   const dates = ['2026-12-01', '2026-12-02', '2026-12-03', '2026-12-04', '2026-12-05', '2026-12-06', '2026-12-07'];
@@ -162,7 +162,7 @@ test('migración: una base de la versión anterior se actualiza sin perder datos
   const { open } = require('../lib/db');
   const db = open(d2);
   assert.equal(db.prepare('SELECT title, planned_end FROM tasks').get().title, 'vieja');
-  assert.equal(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value, '24');
+  assert.equal(db.prepare("SELECT value FROM meta WHERE key='schema_version'").get().value, '46');
   db.close(); fs.rmSync(d2, { recursive: true, force: true });
 });
 

@@ -54,14 +54,15 @@ test('dueño crea usuarios', async () => {
 });
 
 test('obra con plantilla de tareas', async () => {
-  const r = await owner.post('/api/jobs', { client_name: 'Smith', client_phone: '555', address: '1 Main St', project_type: 'patio_cover',
+  const r = await owner.post('/api/jobs', { template: 'base',  client_name: 'Smith', client_phone: '555', address: '1 Main St', project_type: 'patio_cover',
     description: 'Patio cover 20x14', status: 'activo', quoted_cents: 2500000, start_date: '2026-11-01' });
   jobId = r.data.id;
   const j = (await owner.get(`/api/jobs/${jobId}`)).data;
-  assert.equal(j.tasks.length, 16);
-  assert.equal(j.tasks[0].title, 'Hacer planos');
+  assert.equal(j.tasks.length, 20);
+  assert.equal(j.tasks[0].title, 'Medir y hacer planos');
+  assert.equal(j.tasks[0].trade, 'planos'); assert.equal(j.tasks[5].trade, '', 'la inspección no tiene trade');
   await owner.put(`/api/jobs/${jobId}`, { client_user_id: clientId });
-  job2Id = (await owner.post('/api/jobs', { client_name: 'Jones', project_type: 'fire_pit', quoted_cents: 600000, status: 'activo' })).data.id;
+  job2Id = (await owner.post('/api/jobs', { template: 'base',  client_name: 'Jones', project_type: 'fire_pit', quoted_cents: 600000, status: 'activo' })).data.id;
   await owner.put(`/api/jobs/${job2Id}`, { client_user_id: client2Id });
   // asignar tarea a Pedro
   await owner.put(`/api/tasks/${j.tasks[4].id}`, { assignee_id: workerId, planned_date: '2026-11-05' });
@@ -202,11 +203,43 @@ test('revisión extra: entradas raras no rompen el servidor', async () => {
   const r = await fetch(base + '/api/logout', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'null' }, body: '{}' });
   assert.equal(r.status, 403);
   assert.equal((await fetch(base + '/%E0%A4%A')).status, 404);
-  const r3 = await fetch(base + '/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{malo' });
+  const r3 = await fetch(base + '/api/jobs', { template: 'base',  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{malo' });
   assert.equal(r3.status, 400);
-  const r4 = await fetch(base + '/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '[1,2]' });
+  const r4 = await fetch(base + '/api/jobs', { template: 'base',  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '[1,2]' });
   assert.equal(r4.status, 401);
   // texto con HTML se guarda como texto (la interfaz lo muestra escapado)
-  const id = (await owner.post('/api/jobs', { client_name: '<img src=x onerror=alert(1)>', project_type: 'otro' })).data.id;
+  const id = (await owner.post('/api/jobs', { template: 'base',  client_name: '<img src=x onerror=alert(1)>', project_type: 'otro' })).data.id;
   assert.equal((await owner.get(`/api/jobs/${id}`)).data.job.client_name, '<img src=x onerror=alert(1)>');
+});
+
+test('fotos y materiales clasificados por etapa y trade', async () => {
+  await owner.put(`/api/users/${workerId}`, { active: true });
+  for (const [c, u] of [[worker, 'pedro'], [worker2, 'luis'], [cli, 'smith']]) await c.post('/api/login', { username: u, password: 'contrasena-' + u });
+  const j = (await owner.get(`/api/jobs/${jobId}`)).data;
+  const tk = j.tasks[0], other = (await owner.get(`/api/jobs/${job2Id}`)).data.tasks[0];
+  const up = await owner.post(`/api/jobs/${jobId}/photos`, { dataUrl: PNG, task_id: tk.id, trade: 'concreto' });
+  assert.equal(up.status, 200);
+  let ph = (await owner.get(`/api/jobs/${jobId}`)).data.photos.find(p => p.trade === 'concreto');
+  assert.ok(ph && ph.task_id === tk.id, 'la foto guarda etapa y trade');
+  // un trade inventado se guarda vacío
+  await owner.post(`/api/jobs/${jobId}/photos`, { dataUrl: PNG, trade: '<script>' });
+  assert.ok((await owner.get(`/api/jobs/${jobId}`)).data.photos.every(p => p.trade !== '<script>'));
+  // reclasificar
+  assert.equal((await owner.put(`/api/files/${ph.id}/tag`, { trade: 'techo', caption: 'Techo listo' })).status, 200);
+  ph = (await owner.get(`/api/jobs/${jobId}`)).data.photos.find(p => p.id === ph.id);
+  assert.equal(ph.trade, 'techo'); assert.equal(ph.caption, 'Techo listo'); assert.equal(ph.task_id, tk.id);
+  assert.equal((await owner.put(`/api/files/${ph.id}/tag`, { task_id: other.id })).status, 400, 'etapa de otra obra no');
+  // el trabajador solo cambia sus fotos; el cliente nada
+  assert.equal((await worker.put(`/api/files/${ph.id}/tag`, { trade: 'gas' })).status, 403);
+  const mine = (await owner.get(`/api/jobs/${jobId}`)).data.photos.find(p => p.created_by === workerId);
+  if (mine) assert.equal((await worker.put(`/api/files/${mine.id}/tag`, { trade: 'carpinteria' })).status, 200);
+  assert.equal((await cli.put(`/api/files/${ph.id}/tag`, { trade: 'gas' })).status, 403);
+  assert.equal((await worker2.put(`/api/files/${ph.id}/tag`, { trade: 'gas' })).status, 404);
+  // materiales con etapa y trade
+  const m = (await owner.post('/api/materials', { zone: 'pintura', kind: 'Stain', brand: 'SW', name: 'Stain prueba', color_name: 'Cedar' })).data;
+  assert.equal((await owner.post(`/api/jobs/${jobId}/materials`, { material_id: m.id, area: 'Ceiling', task_id: other.id })).status, 400);
+  assert.equal((await owner.post(`/api/jobs/${jobId}/materials`, { material_id: m.id, area: 'Ceiling', task_id: tk.id, trade: 'pintura' })).status, 200);
+  const jm = (await owner.get(`/api/jobs/${jobId}/materials`)).data;
+  const row = (Array.isArray(jm) ? jm : jm.materials || jm.items).find(x => x.area === 'Ceiling');
+  assert.equal(row.trade, 'pintura'); assert.equal(row.task_id, tk.id); assert.ok(row.task_title);
 });
